@@ -3,5 +3,10 @@ name = "blocks"
 version = "0.1.0"
 authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
 
+[profile.dev]
+opt-level = 2
+
 [dependencies]
 gl = "*"
+glutin = "*"
+cgmath = "*"
