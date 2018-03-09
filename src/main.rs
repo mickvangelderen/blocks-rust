@@ -14,6 +14,7 @@ extern crate cgmath;
 extern crate core;
 extern crate gl;
 extern crate glutin;
+extern crate image;
 
 pub mod block;
 pub mod chunk;
@@ -23,6 +24,7 @@ pub mod cube;
 
 use block::Block;
 use cgmath::*;
+use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk::Chunk;
 use glutin::GlContext;
@@ -38,11 +40,12 @@ use std::{thread, time};
 fn main() {
     let mut chunk = Chunk {
         blocks: [Block::Void; CHUNK_TOTAL_BLOCKS],
+        position_indices: Vector3 { x: 0, y: 0, z: 0 },
     };
 
-    for y in 0..32 {
-        for x in 0..32 {
-            *chunk.block_at_mut(x, y, 0) = Block::Rock;
+    for z in 0..CHUNK_SIDE_BLOCKS {
+        for x in 0..CHUNK_SIDE_BLOCKS {
+            *chunk.block_at_mut(x, 0, z) = Block::Rock;
         }
     }
 
@@ -77,18 +80,18 @@ fn main() {
                 .unwrap()
                 .compile(&[
                     &r#"
-#version 330 core
+#version 400 core
 
 uniform mat4 pos_from_obj_to_clp_space;
 
-in vec3 vs_position;
-in vec3 vs_color;
+in vec3 vs_ver_pos;
+in vec2 vs_tex_pos;
 
-out vec3 fs_color;
+out vec2 fs_tex_pos;
 
 void main() {
-    gl_Position = pos_from_obj_to_clp_space*vec4(vs_position, 1.0);
-    fs_color = vs_color;
+    gl_Position = pos_from_obj_to_clp_space*vec4(vs_ver_pos, 1.0);
+    fs_tex_pos = vs_tex_pos;
 }
 "#,
                 ])
@@ -98,14 +101,16 @@ void main() {
                 .unwrap()
                 .compile(&[
                     &r#"
-#version 330 core
+#version 400 core
 
-in vec3 fs_color;
+in vec2 fs_tex_pos;
+
+uniform sampler2D tex;
 
 out vec4 color;
 
 void main() {
-    color = vec4(fs_color, 1.0);
+    color = texture(tex, fs_tex_pos);
 }
 "#,
                 ])
@@ -141,27 +146,28 @@ void main() {
             gl::STATIC_DRAW,
         );
 
-        let position_loc =
-            gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_position"));
-        assert!(position_loc != -1, "Couldn't find position attribute");
-        gl::EnableVertexAttribArray(position_loc as u32);
+        let vs_ver_pos_loc =
+            gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_ver_pos"));
+        assert!(vs_ver_pos_loc != -1, "Couldn't find position attribute");
+        gl::EnableVertexAttribArray(vs_ver_pos_loc as u32);
         gl::VertexAttribPointer(
-            position_loc as u32,                  // index
-            3,                                    // size (component count)
-            gl::FLOAT,                            // type (component type)
-            gl::FALSE,                            // normalized
+            vs_ver_pos_loc as u32,                      // index
+            3,                                          // size (component count)
+            gl::FLOAT,                                  // type (component type)
+            gl::FALSE,                                  // normalized
             std::mem::size_of::<cube::Vertex>() as i32, // stride
-            0 as *const std::os::raw::c_void,     // offset
+            0 as *const std::os::raw::c_void,           // offset
         );
 
-        let color_loc = gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_color"));
-        assert!(color_loc != -1, "Couldn't find color attribute");
-        gl::EnableVertexAttribArray(color_loc as u32);
+        let vs_tex_pos_loc =
+            gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_tex_pos"));
+        assert!(vs_tex_pos_loc != -1, "Couldn't find color attribute");
+        gl::EnableVertexAttribArray(vs_tex_pos_loc as u32);
         gl::VertexAttribPointer(
-            color_loc as u32,                                                   // index
-            3,                                    // size (component count)
-            gl::FLOAT,                            // type (component type)
-            gl::FALSE,                            // normalized
+            vs_tex_pos_loc as u32,                                              // index
+            2,                                          // size (component count)
+            gl::FLOAT,                                  // type (component type)
+            gl::FALSE,                                  // normalized
             std::mem::size_of::<cube::Vertex>() as i32, // stride
             std::mem::size_of::<Vector3<f32>>() as *const std::os::raw::c_void, // offset
         );
@@ -174,6 +180,44 @@ void main() {
             gl::STATIC_DRAW,
         );
     }
+
+    let dirt_texture_name: glw::TextureName = {
+        let name = unsafe {
+            let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
+            glw::gen_textures(&mut names);
+
+            // Move all values out of the array and forget about the array.
+            let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
+            ::std::mem::forget(names);
+
+            name.unwrap()
+        };
+
+        glw::bind_texture(glw::TEXTURE_2D, &name);
+        glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
+        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
+        glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
+        glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
+
+        let img = image::open("assets/blocks/dirt.png").unwrap();
+        let img = img.flipv().to_rgba();
+        unsafe {
+            glw::tex_image_2d(
+                glw::TEXTURE_2D,
+                0, // mipmap level
+                gl::RGBA8 as i32,
+                img.width() as i32,
+                img.height() as i32,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                img.as_ptr() as *const std::os::raw::c_void,
+            );
+        }
+
+        glw::generate_mipmap(glw::TEXTURE_2D);
+
+        name
+    };
 
     let mut should_stop = false;
     let mut has_focus = false;
@@ -422,12 +466,20 @@ void main() {
         {
             let _ = program_slot.bind(&triangle_program_name);
 
-            for i in 0..4 {
-                let pos_from_obj_to_wld_space = Matrix4::from_translation(Vector3 {
-                    x: 0.0,
-                    y: i as f32 * 1.0,
-                    z: i as f32 * 2.0,
-                });
+            for (position, block) in chunk.blocks() {
+                match block {
+                    Block::Void => continue,
+                    Block::Rock => {
+                        glw::active_texture(glw::TEXTURE0);
+                        glw::bind_texture(glw::TEXTURE_2D, &dirt_texture_name);
+                    }
+                    Block::Dirt => {
+                        glw::active_texture(glw::TEXTURE0);
+                        glw::bind_texture(glw::TEXTURE_2D, &dirt_texture_name);
+                    }
+                }
+
+                let pos_from_obj_to_wld_space = Matrix4::from_translation(position);
 
                 unsafe {
                     let loc = gl::GetUniformLocation(
@@ -459,11 +511,11 @@ void main() {
 
         frame_count += 1;
 
-        if frame_count == 20 {
+        if frame_count == 23 {
             // Calculate fps.
             let now = time::Instant::now();
             let elapsed = now - frame_count_start;
-            let fps = 20.0 * 1_000_000.0
+            let fps = 23.0 * 1_000_000.0
                 / (elapsed.as_secs() * 1_000_000 + elapsed.subsec_micros() as u64) as f64;
 
             // Update window title.
