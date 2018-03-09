@@ -45,11 +45,18 @@ fn main() {
 
     for z in 0..CHUNK_SIDE_BLOCKS {
         for x in 0..CHUNK_SIDE_BLOCKS {
-            *chunk.block_at_mut(x, 0, z) = Block::Rock;
+            *chunk.block_at_mut(x, 0, z) = Block::Stone;
         }
     }
 
-    *chunk.block_at_mut(5, 10, 1) = Block::Rock;
+    for z in 5..CHUNK_SIDE_BLOCKS {
+        for x in 10..13 {
+            *chunk.block_at_mut(x, 1, z) = Block::Dirt;
+        }
+    }
+
+    *chunk.block_at_mut(5, 10, 1) = Block::Stone;
+    *chunk.block_at_mut(5, 10, 2) = Block::Dirt;
 
     let mut viewport = Viewport::new(1024, 768);
 
@@ -181,6 +188,44 @@ void main() {
         );
     }
 
+    let stone_texture_name: glw::TextureName = {
+        let name = unsafe {
+            let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
+            glw::gen_textures(&mut names);
+
+            // Move all values out of the array and forget about the array.
+            let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
+            ::std::mem::forget(names);
+
+            name.unwrap()
+        };
+
+        glw::bind_texture(glw::TEXTURE_2D, &name);
+        glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
+        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
+        glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
+        glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
+
+        let img = image::open("assets/stone_xyz.png").unwrap();
+        let img = img.flipv().to_rgba();
+        unsafe {
+            glw::tex_image_2d(
+                glw::TEXTURE_2D,
+                0, // mipmap level
+                gl::RGBA8 as i32,
+                img.width() as i32,
+                img.height() as i32,
+                gl::RGBA,
+                gl::UNSIGNED_BYTE,
+                img.as_ptr() as *const std::os::raw::c_void,
+            );
+        }
+
+        glw::generate_mipmap(glw::TEXTURE_2D);
+
+        name
+    };
+
     let dirt_texture_name: glw::TextureName = {
         let name = unsafe {
             let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
@@ -195,11 +240,11 @@ void main() {
 
         glw::bind_texture(glw::TEXTURE_2D, &name);
         glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
+        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
         glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
         glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
 
-        let img = image::open("assets/blocks/dirt.png").unwrap();
+        let img = image::open("assets/dirt_xyz.png").unwrap();
         let img = img.flipv().to_rgba();
         unsafe {
             glw::tex_image_2d(
@@ -469,9 +514,9 @@ void main() {
             for (position, block) in chunk.blocks() {
                 match block {
                     Block::Void => continue,
-                    Block::Rock => {
+                    Block::Stone => {
                         glw::active_texture(glw::TEXTURE0);
-                        glw::bind_texture(glw::TEXTURE_2D, &dirt_texture_name);
+                        glw::bind_texture(glw::TEXTURE_2D, &stone_texture_name);
                     }
                     Block::Dirt => {
                         glw::active_texture(glw::TEXTURE0);
