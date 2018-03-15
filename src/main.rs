@@ -70,6 +70,7 @@ fn main() {
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
             .with_gl_profile(glutin::GlProfile::Core)
             .with_vsync(true),
+            // .with_multisampling(16),
         &events_loop,
     ).unwrap();
 
@@ -498,6 +499,7 @@ void main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::CULL_FACE);
+            // gl::Enable(gl::MULTISAMPLE);
         }
 
         let pos_from_wld_to_cam_space = camera.pos_from_wld_to_cam_space();
