@@ -2,16 +2,21 @@ use block::Block;
 use cgmath::Matrix4;
 use cgmath::Vector3;
 use cgmath::prelude::*;
+use chunk;
 use chunk::Chunk;
+use cube;
 use gl;
 use glw;
-use cube;
 use image;
 
 pub struct ChunkRenderer {
     program_name: glw::LinkedProgramName,
     stone_texture_name: glw::TextureName,
     dirt_texture_name: glw::TextureName,
+    vertex_array_name: u32,
+    vertex_buffer_name: u32,
+    element_buffer_name: u32,
+    block_buffer_name: u32,
 }
 
 impl ChunkRenderer {
@@ -21,66 +26,37 @@ impl ChunkRenderer {
             .link(&[
                 glw::VertexShaderName::new()
                     .unwrap()
-                    .compile(&[
-                        &r#"
-#version 400 core
-
-uniform mat4 pos_from_obj_to_clp_space;
-
-in vec3 vs_ver_pos;
-in vec2 vs_tex_pos;
-
-out vec2 fs_tex_pos;
-
-void main() {
-    gl_Position = pos_from_obj_to_clp_space*vec4(vs_ver_pos, 1.0);
-    fs_tex_pos = vs_tex_pos;
-}
-"#,
-                    ])
+                    .compile(&[include_str!("chunk_renderer.vert")])
                     .unwrap()
                     .as_ref(),
                 glw::FragmentShaderName::new()
                     .unwrap()
-                    .compile(&[
-                        &r#"
-#version 400 core
-
-in vec2 fs_tex_pos;
-
-uniform sampler2D tex;
-
-out vec4 color;
-
-void main() {
-    color = texture(tex, fs_tex_pos);
-}
-"#,
-                    ])
+                    .compile(&[include_str!("chunk_renderer.frag")])
                     .unwrap()
                     .as_ref(),
             ])
             .unwrap();
 
-        let triangle_vertex_array_name = unsafe {
+        let vertex_array_name = unsafe {
             let mut names: [u32; 1] = ::std::mem::uninitialized();
             gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr());
             assert!(names[0] != 0, "Failed to create vertex array.");
             names[0]
         };
 
-        let (triangle_vertex_buffer_name, triangle_element_buffer_name) = unsafe {
-            let mut names: [u32; 2] = ::std::mem::uninitialized();
+        let (vertex_buffer_name, element_buffer_name, block_buffer_name) = unsafe {
+            let mut names: [u32; 3] = ::std::mem::uninitialized();
             gl::GenBuffers(names.len() as i32, names.as_mut_ptr());
             assert!(names[0] != 0, "Failed to create buffer.");
             assert!(names[1] != 0, "Failed to create buffer.");
-            (names[0], names[1])
+            assert!(names[2] != 0, "Failed to create buffer.");
+            (names[0], names[1], names[2])
         };
 
         unsafe {
-            gl::BindVertexArray(triangle_vertex_array_name);
+            gl::BindVertexArray(vertex_array_name);
 
-            gl::BindBuffer(gl::ARRAY_BUFFER, triangle_vertex_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name);
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -94,10 +70,10 @@ void main() {
             assert!(vs_ver_pos_loc != -1, "Couldn't find position attribute");
             gl::EnableVertexAttribArray(vs_ver_pos_loc as u32);
             gl::VertexAttribPointer(
-                vs_ver_pos_loc as u32,                      // index
-                3,                                          // size (component count)
-                gl::FLOAT,                                  // type (component type)
-                gl::FALSE,                                  // normalized
+                vs_ver_pos_loc as u32,                        // index
+                3,                                            // size (component count)
+                gl::FLOAT,                                    // type (component type)
+                gl::FALSE,                                    // normalized
                 ::std::mem::size_of::<cube::Vertex>() as i32, // stride
                 0 as *const ::std::os::raw::c_void,           // offset
             );
@@ -107,15 +83,15 @@ void main() {
             assert!(vs_tex_pos_loc != -1, "Couldn't find color attribute");
             gl::EnableVertexAttribArray(vs_tex_pos_loc as u32);
             gl::VertexAttribPointer(
-                vs_tex_pos_loc as u32,                                              // index
-                2,                                          // size (component count)
-                gl::FLOAT,                                  // type (component type)
-                gl::FALSE,                                  // normalized
+                vs_tex_pos_loc as u32,                                                  // index
+                2,                                            // size (component count)
+                gl::FLOAT,                                    // type (component type)
+                gl::FALSE,                                    // normalized
                 ::std::mem::size_of::<cube::Vertex>() as i32, // stride
                 ::std::mem::size_of::<Vector3<f32>>() as *const ::std::os::raw::c_void, // offset
             );
 
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, triangle_element_buffer_name);
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name);
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&cube::ELEMENT_DATA) as isize,
@@ -204,6 +180,10 @@ void main() {
             program_name,
             stone_texture_name,
             dirt_texture_name,
+            vertex_array_name,
+            vertex_buffer_name,
+            element_buffer_name,
+            block_buffer_name,
         }
     }
 
@@ -230,6 +210,7 @@ void main() {
                     self.program_name.as_u32(),
                     gl_str!("pos_from_obj_to_clp_space"),
                 );
+                assert!(loc != -1, "failed to query uniform location");
                 let pos_from_obj_to_clp_space =
                     pos_from_wld_to_clp_space * pos_from_obj_to_wld_space;
                 gl::UniformMatrix4fv(
@@ -242,9 +223,9 @@ void main() {
 
             unsafe {
                 gl::DrawElements(
-                    gl::TRIANGLES,      // mode
-                    12 * 3,             // count
-                    gl::UNSIGNED_INT,   // index type,
+                    gl::TRIANGLES,                      // mode
+                    12 * 3,                             // count
+                    gl::UNSIGNED_INT,                   // index type,
                     0 as *const ::std::os::raw::c_void, // offset
                 );
             }
