@@ -21,6 +21,7 @@ pub mod chunk;
 #[macro_use]
 pub mod glw;
 pub mod cube;
+pub mod rate_counter;
 
 use block::Block;
 use cgmath::*;
@@ -289,9 +290,11 @@ void main() {
     let mut g = 0.8;
     let mut b = 0.7;
 
-    let mut frame_count = 0;
-    let mut frame_count_start = simulation_start;
-    let mut update_count: u64 = 0;
+    let mut fps_counter = rate_counter::RateCounter::with_capacity(30);
+    #[allow(unused_assignments)]
+    let mut fps = std::f64::NAN;
+    let mut ups_counter = rate_counter::RateCounter::with_capacity(30);
+    let mut ups = std::f64::NAN;
 
     let mut camera = Camera {
         position: Vector3 {
@@ -473,8 +476,8 @@ void main() {
                     .height(current_height as i32);
             }
 
-            update_count += 1;
             next_update += time::Duration::from_nanos((1000_000_000f64 / DESIRED_UPS) as u64);
+            ups = ups_counter.update();
         }
 
         // Don't put any updates after this or we will miss them.
@@ -554,22 +557,9 @@ void main() {
 
         gl_window.swap_buffers().unwrap();
 
-        frame_count += 1;
+        fps = fps_counter.update();
 
-        if frame_count == 23 {
-            // Calculate fps.
-            let now = time::Instant::now();
-            let elapsed = now - frame_count_start;
-            let fps = 23.0 * 1_000_000.0
-                / (elapsed.as_secs() * 1_000_000 + elapsed.subsec_micros() as u64) as f64;
-
-            // Update window title.
-            gl_window.set_title(&format!("blocks {:.1} FPS", fps));
-
-            // Reset.
-            frame_count = 0;
-            frame_count_start = now;
-        }
+        gl_window.set_title(&format!("blocks {:.1} FPS {:.1} UPS", fps, ups));
 
         next_render = time::Instant::now()
             + time::Duration::from_nanos((1000_000_000f64 / DESIRED_FPS) as u64);
