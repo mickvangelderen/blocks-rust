@@ -1,12 +1,17 @@
-pub mod camera;
-pub mod program;
-pub mod shader;
-pub mod viewport;
+mod camera;
+mod program;
+mod shader;
+mod viewport;
 
 #[allow(non_camel_case_types)]
-pub mod texture;
+mod texture;
 
 #[macro_use]
-pub mod string;
+mod string;
 
+pub use self::camera::*;
+pub use self::program::*;
+pub use self::shader::*;
+pub use self::string::*;
 pub use self::texture::*;
+pub use self::viewport::*;

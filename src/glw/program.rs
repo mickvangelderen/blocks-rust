@@ -117,3 +117,9 @@ pub struct BoundProgramName<'s, 'p> {
     slot: PhantomData<&'s mut ProgramSlot>,
     program: PhantomData<&'p LinkedProgramName>,
 }
+
+pub fn use_program(program: &LinkedProgramName) {
+    unsafe {
+        gl::UseProgram(program.as_u32());
+    }
+}

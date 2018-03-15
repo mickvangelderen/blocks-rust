@@ -22,20 +22,15 @@ pub mod chunk;
 pub mod glw;
 pub mod cube;
 pub mod rate_counter;
+pub mod chunk_renderer;
 
 use block::Block;
 use cgmath::*;
 use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk::Chunk;
+use chunk_renderer::ChunkRenderer;
 use glutin::GlContext;
-use glw::camera::Camera;
-use glw::camera::CameraUpdate;
-use glw::program::ProgramName;
-use glw::program::ProgramSlot;
-use glw::shader::FragmentShaderName;
-use glw::shader::VertexShaderName;
-use glw::viewport::Viewport;
 use std::{thread, time};
 
 fn main() {
@@ -59,7 +54,7 @@ fn main() {
     *chunk.block_at_mut(5, 10, 1) = Block::Stone;
     *chunk.block_at_mut(5, 10, 2) = Block::Dirt;
 
-    let mut viewport = Viewport::new(1024, 768);
+    let mut viewport = glw::Viewport::new(1024, 768);
 
     let mut events_loop = glutin::EventsLoop::new();
     let gl_window = glutin::GlWindow::new(
@@ -74,197 +69,13 @@ fn main() {
         &events_loop,
     ).unwrap();
 
-    let mut program_slot = ProgramSlot;
-
     unsafe {
         gl_window.make_current().unwrap();
     }
 
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
-    let triangle_program_name = ProgramName::new()
-        .unwrap()
-        .link(&[
-            VertexShaderName::new()
-                .unwrap()
-                .compile(&[
-                    &r#"
-#version 400 core
-
-uniform mat4 pos_from_obj_to_clp_space;
-
-in vec3 vs_ver_pos;
-in vec2 vs_tex_pos;
-
-out vec2 fs_tex_pos;
-
-void main() {
-    gl_Position = pos_from_obj_to_clp_space*vec4(vs_ver_pos, 1.0);
-    fs_tex_pos = vs_tex_pos;
-}
-"#,
-                ])
-                .unwrap()
-                .as_ref(),
-            FragmentShaderName::new()
-                .unwrap()
-                .compile(&[
-                    &r#"
-#version 400 core
-
-in vec2 fs_tex_pos;
-
-uniform sampler2D tex;
-
-out vec4 color;
-
-void main() {
-    color = texture(tex, fs_tex_pos);
-}
-"#,
-                ])
-                .unwrap()
-                .as_ref(),
-        ])
-        .unwrap();
-
-    let triangle_vertex_array_name = unsafe {
-        let mut names: [u32; 1] = std::mem::uninitialized();
-        gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr());
-        assert!(names[0] != 0, "Failed to create vertex array.");
-        names[0]
-    };
-
-    let (triangle_vertex_buffer_name, triangle_element_buffer_name) = unsafe {
-        let mut names: [u32; 2] = std::mem::uninitialized();
-        gl::GenBuffers(names.len() as i32, names.as_mut_ptr());
-        assert!(names[0] != 0, "Failed to create buffer.");
-        assert!(names[1] != 0, "Failed to create buffer.");
-        (names[0], names[1])
-    };
-
-    unsafe {
-        gl::BindVertexArray(triangle_vertex_array_name);
-
-        gl::BindBuffer(gl::ARRAY_BUFFER, triangle_vertex_buffer_name);
-
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            std::mem::size_of_val(&cube::VERTEX_DATA) as isize,
-            cube::VERTEX_DATA.as_ptr() as *const std::os::raw::c_void,
-            gl::STATIC_DRAW,
-        );
-
-        let vs_ver_pos_loc =
-            gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_ver_pos"));
-        assert!(vs_ver_pos_loc != -1, "Couldn't find position attribute");
-        gl::EnableVertexAttribArray(vs_ver_pos_loc as u32);
-        gl::VertexAttribPointer(
-            vs_ver_pos_loc as u32,                      // index
-            3,                                          // size (component count)
-            gl::FLOAT,                                  // type (component type)
-            gl::FALSE,                                  // normalized
-            std::mem::size_of::<cube::Vertex>() as i32, // stride
-            0 as *const std::os::raw::c_void,           // offset
-        );
-
-        let vs_tex_pos_loc =
-            gl::GetAttribLocation(triangle_program_name.as_u32(), gl_str!("vs_tex_pos"));
-        assert!(vs_tex_pos_loc != -1, "Couldn't find color attribute");
-        gl::EnableVertexAttribArray(vs_tex_pos_loc as u32);
-        gl::VertexAttribPointer(
-            vs_tex_pos_loc as u32,                                              // index
-            2,                                          // size (component count)
-            gl::FLOAT,                                  // type (component type)
-            gl::FALSE,                                  // normalized
-            std::mem::size_of::<cube::Vertex>() as i32, // stride
-            std::mem::size_of::<Vector3<f32>>() as *const std::os::raw::c_void, // offset
-        );
-
-        gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, triangle_element_buffer_name);
-        gl::BufferData(
-            gl::ELEMENT_ARRAY_BUFFER,
-            std::mem::size_of_val(&cube::ELEMENT_DATA) as isize,
-            cube::ELEMENT_DATA.as_ptr() as *const std::os::raw::c_void,
-            gl::STATIC_DRAW,
-        );
-    }
-
-    let stone_texture_name: glw::TextureName = {
-        let name = unsafe {
-            let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
-            glw::gen_textures(&mut names);
-
-            // Move all values out of the array and forget about the array.
-            let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
-            ::std::mem::forget(names);
-
-            name.unwrap()
-        };
-
-        glw::bind_texture(glw::TEXTURE_2D, &name);
-        glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
-        glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
-        glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
-
-        let img = image::open("assets/stone_xyz.png").unwrap();
-        let img = img.flipv().to_rgba();
-        unsafe {
-            glw::tex_image_2d(
-                glw::TEXTURE_2D,
-                0, // mipmap level
-                gl::RGBA8 as i32,
-                img.width() as i32,
-                img.height() as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                img.as_ptr() as *const std::os::raw::c_void,
-            );
-        }
-
-        glw::generate_mipmap(glw::TEXTURE_2D);
-
-        name
-    };
-
-    let dirt_texture_name: glw::TextureName = {
-        let name = unsafe {
-            let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
-            glw::gen_textures(&mut names);
-
-            // Move all values out of the array and forget about the array.
-            let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
-            ::std::mem::forget(names);
-
-            name.unwrap()
-        };
-
-        glw::bind_texture(glw::TEXTURE_2D, &name);
-        glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-        glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
-        glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
-        glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
-
-        let img = image::open("assets/dirt_xyz.png").unwrap();
-        let img = img.flipv().to_rgba();
-        unsafe {
-            glw::tex_image_2d(
-                glw::TEXTURE_2D,
-                0, // mipmap level
-                gl::RGBA8 as i32,
-                img.width() as i32,
-                img.height() as i32,
-                gl::RGBA,
-                gl::UNSIGNED_BYTE,
-                img.as_ptr() as *const std::os::raw::c_void,
-            );
-        }
-
-        glw::generate_mipmap(glw::TEXTURE_2D);
-
-        name
-    };
+    let chunk_renderer = ChunkRenderer::new();
 
     let mut should_stop = false;
     let mut has_focus = false;
@@ -297,7 +108,7 @@ void main() {
     let mut ups_counter = rate_counter::RateCounter::with_capacity(30);
     let mut ups = std::f64::NAN;
 
-    let mut camera = Camera {
+    let mut camera = glw::Camera {
         position: Vector3 {
             x: 0.0,
             y: 2.0,
@@ -390,7 +201,7 @@ void main() {
 
             use glutin::ElementState::*;
 
-            camera.update(&CameraUpdate {
+            camera.update(&glw::CameraUpdate {
                 delta_time: 1.0 / DESIRED_UPS as f32,
                 delta_position: Vector3 {
                     x: match input_left {
@@ -513,49 +324,7 @@ void main() {
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
 
-        {
-            let _ = program_slot.bind(&triangle_program_name);
-
-            for (position, block) in chunk.blocks() {
-                match block {
-                    Block::Void => continue,
-                    Block::Stone => {
-                        glw::active_texture(glw::TEXTURE0);
-                        glw::bind_texture(glw::TEXTURE_2D, &stone_texture_name);
-                    }
-                    Block::Dirt => {
-                        glw::active_texture(glw::TEXTURE0);
-                        glw::bind_texture(glw::TEXTURE_2D, &dirt_texture_name);
-                    }
-                }
-
-                let pos_from_obj_to_wld_space = Matrix4::from_translation(position);
-
-                unsafe {
-                    let loc = gl::GetUniformLocation(
-                        triangle_program_name.as_u32(),
-                        gl_str!("pos_from_obj_to_clp_space"),
-                    );
-                    let pos_from_obj_to_clp_space =
-                        pos_from_wld_to_clp_space * pos_from_obj_to_wld_space;
-                    gl::UniformMatrix4fv(
-                        loc,                                // location
-                        1,                                  // count
-                        gl::FALSE,                          // row major
-                        pos_from_obj_to_clp_space.as_ptr(), // data
-                    );
-                }
-
-                unsafe {
-                    gl::DrawElements(
-                        gl::TRIANGLES,                    // mode
-                        12 * 3,                           // count
-                        gl::UNSIGNED_INT,                 // index type,
-                        0 as *const std::os::raw::c_void, // offset
-                    );
-                }
-            }
-        }
+        chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
 
         gl_window.swap_buffers().unwrap();
 
