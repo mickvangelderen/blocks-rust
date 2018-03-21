@@ -1,20 +1,22 @@
 #version 400 core
 
 in vec2 fs_tex_pos;
-flat in uvec3 fs_blk_pos;
+flat in uint fs_blk_type;
 
-
-uniform sampler2D tex;
+uniform sampler2D tex_1;
+uniform sampler2D tex_2;
 
 out vec4 color;
 
 void main() {
-  color = texture(tex, fs_tex_pos);
-  vec4 b = vec4(
-    float(fs_blk_pos.x)/15.0,
-    float(fs_blk_pos.y)/15.0,
-    float(fs_blk_pos.z)/15.0,
-    1.0
-  );
-  color = mix(color, b, 0.5);
+  switch (fs_blk_type) {
+    case 1:
+      color = texture(tex_1, fs_tex_pos);
+      break;
+    case 2:
+      color = texture(tex_2, fs_tex_pos);
+      break;
+    default:
+      discard;
+  }
 }

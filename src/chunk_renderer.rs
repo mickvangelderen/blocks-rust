@@ -58,8 +58,17 @@ impl ChunkRenderer {
         };
 
         unsafe {
+            glw::use_program(&program_name);
+            let tex_1_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("tex_1"));
+            gl::Uniform1i(tex_1_loc, 0);
+            let tex_2_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("tex_2"));
+            gl::Uniform1i(tex_2_loc, 1);
+        }
+
+        unsafe {
             gl::BindVertexArray(vertex_array_name);
 
+            // Set up vertex buffer.
             gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name);
 
             gl::BufferData(
@@ -69,6 +78,7 @@ impl ChunkRenderer {
                 gl::STATIC_DRAW,
             );
 
+            // Associate vertex positions.
             let vs_ver_pos_loc =
                 gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_ver_pos"));
             assert!(vs_ver_pos_loc != -1, "Couldn't find position attribute");
@@ -82,6 +92,7 @@ impl ChunkRenderer {
                 0 as *const ::std::os::raw::c_void,           // offset
             );
 
+            // Associate texture coordinates.
             let vs_tex_pos_loc =
                 gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_tex_pos"));
             assert!(vs_tex_pos_loc != -1, "Couldn't find color attribute");
@@ -95,24 +106,43 @@ impl ChunkRenderer {
                 ::std::mem::size_of::<Vector3<f32>>() as *const ::std::os::raw::c_void, // offset
             );
 
+            // Set up block type buffer.
+            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name);
+
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                ::std::mem::size_of::<[Block; chunk::CHUNK_TOTAL_BLOCKS]>() as isize,
+                ::std::ptr::null(),
+                gl::STREAM_DRAW,
+            );
+
+            // Associate block type buffer with vertex attribute.
+            let vs_blk_type_loc =
+                gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_blk_type"));
+            assert!(
+                vs_blk_type_loc != -1,
+                "Couldn't find vs_blk_type attribute location"
+            );
+            gl::EnableVertexAttribArray(vs_blk_type_loc as u32);
+            gl::VertexAttribIPointer(
+                vs_blk_type_loc as u32,                // index
+                ::std::mem::size_of::<Block>() as i32, // size (component count)
+                gl::UNSIGNED_BYTE,                     // type (component type)
+                ::std::mem::size_of::<Block>() as i32, // stride
+                0 as *const ::std::os::raw::c_void,    // offset
+            );
+            gl::VertexAttribDivisor(
+                vs_blk_type_loc as u32, // index
+                1,                      // advance every # instances
+            );
+
+            // Associate and set up element array.
             gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name);
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&cube::ELEMENT_DATA) as isize,
                 cube::ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
                 gl::STATIC_DRAW,
-            );
-
-            gl::BindVertexArray(0);
-        }
-
-        unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name);
-            gl::BufferData(
-                gl::ARRAY_BUFFER,
-                ::std::mem::size_of::<[Block; chunk::CHUNK_TOTAL_BLOCKS]>() as isize,
-                ::std::ptr::null(),
-                gl::STREAM_DRAW,
             );
         }
 
@@ -282,6 +312,9 @@ impl ChunkRenderer {
             glw::active_texture(glw::TEXTURE0);
             glw::bind_texture(glw::TEXTURE_2D, &self.stone_texture_name);
 
+            glw::active_texture(glw::TEXTURE1);
+            glw::bind_texture(glw::TEXTURE_2D, &self.dirt_texture_name);
+
             gl::DrawElementsInstanced(
                 gl::TRIANGLES,                         // mode
                 (cube::ELEMENT_DATA.len() * 3) as i32, // count
@@ -289,10 +322,6 @@ impl ChunkRenderer {
                 0 as *const ::std::os::raw::c_void,    // offset
                 chunk::CHUNK_TOTAL_BLOCKS as i32,      // primitive count
             );
-        }
-
-        unsafe {
-            gl::BindVertexArray(0);
         }
     }
 }
