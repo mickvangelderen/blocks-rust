@@ -11,8 +11,7 @@ use image;
 
 pub struct ChunkRenderer {
     program_name: glw::LinkedProgramName,
-    stone_texture_name: glw::TextureName,
-    dirt_texture_name: glw::TextureName,
+    texture_atlas_name: glw::TextureName,
     vertex_array_name: u32,
     vertex_buffer_name: u32,
     element_buffer_name: u32,
@@ -59,10 +58,8 @@ impl ChunkRenderer {
 
         unsafe {
             glw::use_program(&program_name);
-            let tex_1_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("tex_1"));
-            gl::Uniform1i(tex_1_loc, 0);
-            let tex_2_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("tex_2"));
-            gl::Uniform1i(tex_2_loc, 1);
+            let texture_atlas_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("texture_atlas"));
+            gl::Uniform1i(texture_atlas_loc, 0);
         }
 
         unsafe {
@@ -146,7 +143,7 @@ impl ChunkRenderer {
             );
         }
 
-        let stone_texture_name: glw::TextureName = {
+        let texture_atlas_name: glw::TextureName = {
             let name = unsafe {
                 let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
                 glw::gen_textures(&mut names);
@@ -158,74 +155,71 @@ impl ChunkRenderer {
                 name.unwrap()
             };
 
-            glw::bind_texture(glw::TEXTURE_2D, &name);
-            glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-            glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
-            glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
-            glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
-
-            let img = image::open("assets/stone_xyz.png").unwrap();
-            let img = img.flipv().to_rgba();
+            glw::bind_texture(glw::TEXTURE_2D_ARRAY, &name);
             unsafe {
-                glw::tex_image_2d(
-                    glw::TEXTURE_2D,
-                    0, // mipmap level
-                    gl::RGBA8 as i32,
-                    img.width() as i32,
-                    img.height() as i32,
-                    gl::RGBA,
-                    gl::UNSIGNED_BYTE,
-                    img.as_ptr() as *const ::std::os::raw::c_void,
+                gl::TexStorage3D(
+                    gl::TEXTURE_2D_ARRAY, // target
+                    6,                    // levels
+                    gl::RGBA8,            // internal format
+                    32,                   // width
+                    32,                   // height
+                    2,                    // depth (layer count)
                 );
             }
 
-            glw::generate_mipmap(glw::TEXTURE_2D);
+            glw::tex_parameter_min_filter(glw::TEXTURE_2D_ARRAY, glw::LINEAR_MIPMAP_LINEAR);
+            glw::tex_parameter_mag_filter(glw::TEXTURE_2D_ARRAY, glw::NEAREST);
+            glw::tex_parameter_wrap_s(glw::TEXTURE_2D_ARRAY, glw::CLAMP_TO_EDGE);
+            glw::tex_parameter_wrap_t(glw::TEXTURE_2D_ARRAY, glw::CLAMP_TO_EDGE);
 
-            name
-        };
-
-        let dirt_texture_name: glw::TextureName = {
-            let name = unsafe {
-                let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
-                glw::gen_textures(&mut names);
-
-                // Move all values out of the array and forget about the array.
-                let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
-                ::std::mem::forget(names);
-
-                name.unwrap()
-            };
-
-            glw::bind_texture(glw::TEXTURE_2D, &name);
-            glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-            glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
-            glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::REPEAT);
-            glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::REPEAT);
-
-            let img = image::open("assets/dirt_xyz.png").unwrap();
-            let img = img.flipv().to_rgba();
             unsafe {
-                glw::tex_image_2d(
-                    glw::TEXTURE_2D,
-                    0, // mipmap level
-                    gl::RGBA8 as i32,
-                    img.width() as i32,
-                    img.height() as i32,
-                    gl::RGBA,
-                    gl::UNSIGNED_BYTE,
-                    img.as_ptr() as *const ::std::os::raw::c_void,
+                let img = image::open("assets/stone_xyz.png").unwrap();
+                let img = img.flipv().to_rgba();
+                assert_eq!(img.width(), 32);
+                assert_eq!(img.height(), 32);
+                gl::TexSubImage3D(
+                    gl::TEXTURE_2D_ARRAY,                          // target
+                    0,                                             // mipmap level
+                    0,                                             // xoffset
+                    0,                                             // yoffset,
+                    0,                                             // zoffset (slice),
+                    img.width() as i32,                            // width
+                    img.height() as i32,                           // height
+                    1,                                             // depth
+                    gl::RGBA,                                      // format
+                    gl::UNSIGNED_BYTE,                             // type
+                    img.as_ptr() as *const ::std::os::raw::c_void, // data
                 );
             }
 
-            glw::generate_mipmap(glw::TEXTURE_2D);
+            unsafe {
+                let img = image::open("assets/dirt_xyz.png").unwrap();
+                let img = img.flipv().to_rgba();
+                assert_eq!(img.width(), 32);
+                assert_eq!(img.height(), 32);
+                gl::TexSubImage3D(
+                    gl::TEXTURE_2D_ARRAY,                          // target
+                    0,                                             // mipmap level
+                    0,                                             // xoffset
+                    0,                                             // yoffset,
+                    1,                                             // zoffset (slice),
+                    img.width() as i32,                            // width
+                    img.height() as i32,                           // height
+                    1,                                             // depth
+                    gl::RGBA,                                      // format
+                    gl::UNSIGNED_BYTE,                             // type
+                    img.as_ptr() as *const ::std::os::raw::c_void, // data
+                );
+            }
+
+            glw::generate_mipmap(glw::TEXTURE_2D_ARRAY);
 
             name
         };
 
         ChunkRenderer {
             program_name,
-            stone_texture_name,
-            dirt_texture_name,
+            texture_atlas_name,
             vertex_array_name,
             vertex_buffer_name,
             element_buffer_name,
@@ -310,10 +304,7 @@ impl ChunkRenderer {
 
             // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);
-            glw::bind_texture(glw::TEXTURE_2D, &self.stone_texture_name);
-
-            glw::active_texture(glw::TEXTURE1);
-            glw::bind_texture(glw::TEXTURE_2D, &self.dirt_texture_name);
+            glw::bind_texture(glw::TEXTURE_2D, &self.texture_atlas_name);
 
             gl::DrawElementsInstanced(
                 gl::TRIANGLES,                         // mode

@@ -25,10 +25,12 @@ impl Drop for TextureName {
 
 #[repr(u32)]
 pub enum TextureTarget {
-    TEXTURE_2D = gl::TEXTURE_2D
+    TEXTURE_2D = gl::TEXTURE_2D,
+    TEXTURE_2D_ARRAY = gl::TEXTURE_2D_ARRAY,
 }
 
 pub const TEXTURE_2D: TextureTarget = TextureTarget::TEXTURE_2D;
+pub const TEXTURE_2D_ARRAY: TextureTarget = TextureTarget::TEXTURE_2D_ARRAY;
 
 #[repr(u32)]
 pub enum TextureFilter {
