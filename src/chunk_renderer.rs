@@ -98,6 +98,18 @@ impl ChunkRenderer {
                 cube::ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
                 gl::STATIC_DRAW,
             );
+
+            gl::BindVertexArray(0);
+        }
+
+        unsafe {
+            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name);
+            gl::BufferData(
+                gl::ARRAY_BUFFER,
+                ::std::mem::size_of::<[Block; chunk::CHUNK_TOTAL_BLOCKS]>() as isize,
+                ::std::ptr::null(),
+                gl::STREAM_DRAW,
+            );
         }
 
         let stone_texture_name: glw::TextureName = {
@@ -188,47 +200,95 @@ impl ChunkRenderer {
     }
 
     pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, chunk: &Chunk) {
+        unsafe {
+            // Update block type buffer.
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.block_buffer_name);
+            gl::BufferSubData(
+                gl::ARRAY_BUFFER,                                                     // target
+                0,                                                                    // offset
+                ::std::mem::size_of::<[Block; chunk::CHUNK_TOTAL_BLOCKS]>() as isize, // size
+                chunk.blocks.as_ptr() as *const ::std::os::raw::c_void,               // data
+            );
+        }
+
         glw::use_program(&self.program_name);
 
-        for (position, block) in chunk.blocks() {
-            match block {
-                Block::Void => continue,
-                Block::Stone => {
-                    glw::active_texture(glw::TEXTURE0);
-                    glw::bind_texture(glw::TEXTURE_2D, &self.stone_texture_name);
-                }
-                Block::Dirt => {
-                    glw::active_texture(glw::TEXTURE0);
-                    glw::bind_texture(glw::TEXTURE_2D, &self.dirt_texture_name);
-                }
-            }
+        unsafe {
+            gl::BindVertexArray(self.vertex_array_name);
+        }
 
-            let pos_from_obj_to_wld_space = Matrix4::from_translation(position);
+        // for (position, block) in chunk.blocks() {
+        //     match block {
+        //         Block::Void => continue,
+        //         Block::Stone => {
+        //             glw::active_texture(glw::TEXTURE0);
+        //             glw::bind_texture(glw::TEXTURE_2D, &self.stone_texture_name);
+        //         }
+        //         Block::Dirt => {
+        //             glw::active_texture(glw::TEXTURE0);
+        //             glw::bind_texture(glw::TEXTURE_2D, &self.dirt_texture_name);
+        //         }
+        //     }
 
-            unsafe {
+        //     let pos_from_obj_to_wld_space = Matrix4::from_translation(position);
+
+        //     unsafe {
+        //         let loc = gl::GetUniformLocation(
+        //             self.program_name.as_u32(),
+        //             gl_str!("pos_from_obj_to_clp_space"),
+        //         );
+        //         assert!(loc != -1, "failed to query uniform location");
+        //         let pos_from_obj_to_clp_space =
+        //             pos_from_wld_to_clp_space * pos_from_obj_to_wld_space;
+        //         gl::UniformMatrix4fv(
+        //             loc,                                // location
+        //             1,                                  // count
+        //             gl::FALSE,                          // row major
+        //             pos_from_obj_to_clp_space.as_ptr(), // data
+        //         );
+        //     }
+
+        //     unsafe {
+        //         gl::DrawElements(
+        //             gl::TRIANGLES,                      // mode
+        //             12 * 3,                             // count
+        //             gl::UNSIGNED_INT,                   // index type,
+        //             0 as *const ::std::os::raw::c_void, // offset
+        //         );
+        //     }
+        // }
+
+        unsafe {
+            {
+                // Set pos_from_wld_to_clp_space.
                 let loc = gl::GetUniformLocation(
                     self.program_name.as_u32(),
-                    gl_str!("pos_from_obj_to_clp_space"),
+                    gl_str!("pos_from_wld_to_clp_space"),
                 );
                 assert!(loc != -1, "failed to query uniform location");
-                let pos_from_obj_to_clp_space =
-                    pos_from_wld_to_clp_space * pos_from_obj_to_wld_space;
                 gl::UniformMatrix4fv(
                     loc,                                // location
                     1,                                  // count
                     gl::FALSE,                          // row major
-                    pos_from_obj_to_clp_space.as_ptr(), // data
+                    pos_from_wld_to_clp_space.as_ptr(), // data
                 );
             }
 
-            unsafe {
-                gl::DrawElements(
-                    gl::TRIANGLES,                      // mode
-                    12 * 3,                             // count
-                    gl::UNSIGNED_INT,                   // index type,
-                    0 as *const ::std::os::raw::c_void, // offset
-                );
-            }
+            // TODO: use 3d texture and lookup in shader
+            glw::active_texture(glw::TEXTURE0);
+            glw::bind_texture(glw::TEXTURE_2D, &self.stone_texture_name);
+
+            gl::DrawElementsInstanced(
+                gl::TRIANGLES,                         // mode
+                (cube::ELEMENT_DATA.len() * 3) as i32, // count
+                gl::UNSIGNED_INT,                      // index type
+                0 as *const ::std::os::raw::c_void,    // offset
+                chunk::CHUNK_TOTAL_BLOCKS as i32,      // primitive count
+            );
+        }
+
+        unsafe {
+            gl::BindVertexArray(0);
         }
     }
 }
