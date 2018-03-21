@@ -27,12 +27,16 @@ impl ChunkRenderer {
                 glw::VertexShaderName::new()
                     .unwrap()
                     .compile(&[include_str!("chunk_renderer.vert")])
-                    .unwrap()
+                    .unwrap_or_else(|err| {
+                        panic!("\nchunk_renderer.vert:\n{}", err);
+                    })
                     .as_ref(),
                 glw::FragmentShaderName::new()
                     .unwrap()
                     .compile(&[include_str!("chunk_renderer.frag")])
-                    .unwrap()
+                    .unwrap_or_else(|err| {
+                        panic!("\nchunk_renderer.frag:\n{}", err);
+                    })
                     .as_ref(),
             ])
             .unwrap();

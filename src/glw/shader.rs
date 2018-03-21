@@ -15,6 +15,24 @@ pub enum ShaderKind {
 #[derive(Debug)]
 pub struct ShaderName(NonZero<u32>);
 
+#[derive(Debug, Clone)]
+pub struct CompilationFailed(String);
+
+use std::error;
+use std::fmt;
+
+impl fmt::Display for CompilationFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl error::Error for CompilationFailed {
+    fn description(&self) -> &str {
+        &self.0
+    }
+}
+
 impl ShaderName {
     #[inline]
     fn new(kind: ShaderKind) -> Option<Self> {
@@ -26,9 +44,8 @@ impl ShaderName {
         self.0.get()
     }
 
-    pub fn compile(self, sources: &[&str]) -> Result<CompiledShaderName, String> {
-        let source_lengths: Vec<i32> =
-            sources.iter().map(|source| source.len() as i32).collect();
+    pub fn compile(self, sources: &[&str]) -> Result<CompiledShaderName, CompilationFailed> {
+        let source_lengths: Vec<i32> = sources.iter().map(|source| source.len() as i32).collect();
 
         unsafe {
             gl::ShaderSource(
@@ -68,7 +85,9 @@ impl ShaderName {
                 buffer
             };
 
-            Err(String::from_utf8(buffer).expect("Shader info log is not utf8"))
+            Err(CompilationFailed(
+                String::from_utf8(buffer).expect("Shader info log is not utf8"),
+            ))
         } else {
             Ok(CompiledShaderName(self))
         }
@@ -118,7 +137,7 @@ macro_rules! impl_shader_kind {
             }
 
             #[inline]
-            pub fn compile(self, sources: &[&str]) -> Result<$CompiledKindShaderName, String> {
+            pub fn compile(self, sources: &[&str]) -> Result<$CompiledKindShaderName, CompilationFailed> {
                 self.0.compile(sources).map($CompiledKindShaderName)
             }
         }
@@ -148,9 +167,33 @@ macro_rules! impl_shader_kind {
     }
 }
 
-impl_shader_kind!(ShaderKind::Compute, ComputeShaderName, CompiledComputeShaderName);
-impl_shader_kind!(ShaderKind::Fragment, FragmentShaderName, CompiledFragmentShaderName);
-impl_shader_kind!(ShaderKind::Geometry, GeometryShaderName, CompiledGeometryShaderName);
-impl_shader_kind!(ShaderKind::Vertex, VertexShaderName, CompiledVertexShaderName);
-impl_shader_kind!(ShaderKind::TesselationControl, TesselationControlShaderName, CompiledTesselationControlShaderName);
-impl_shader_kind!(ShaderKind::TesselationEvaluation, TesselationEvaluationShaderName, CompiledTesselationEvaluationShaderName);
+impl_shader_kind!(
+    ShaderKind::Compute,
+    ComputeShaderName,
+    CompiledComputeShaderName
+);
+impl_shader_kind!(
+    ShaderKind::Fragment,
+    FragmentShaderName,
+    CompiledFragmentShaderName
+);
+impl_shader_kind!(
+    ShaderKind::Geometry,
+    GeometryShaderName,
+    CompiledGeometryShaderName
+);
+impl_shader_kind!(
+    ShaderKind::Vertex,
+    VertexShaderName,
+    CompiledVertexShaderName
+);
+impl_shader_kind!(
+    ShaderKind::TesselationControl,
+    TesselationControlShaderName,
+    CompiledTesselationControlShaderName
+);
+impl_shader_kind!(
+    ShaderKind::TesselationEvaluation,
+    TesselationEvaluationShaderName,
+    CompiledTesselationEvaluationShaderName
+);
