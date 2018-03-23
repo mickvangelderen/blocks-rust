@@ -1,3 +1,5 @@
+[commit 1079f09df9d917fe46b0614c2caff6b4643a700c](https://github.com/mickvangelderen/blocks-rust/tree/1079f09df9d917fe46b0614c2caff6b4643a700c)
+
 Implemented basic text rendering. Using instanced rendering to render each
 glyph. The texture coordinates for each glyph are determined by the character
 value:
@@ -20,6 +22,8 @@ glyphs in my texture.
 
 ![Incorrect texture coordinates in the vertex data.](1.png "Incorrect texture coordinates in the vertex data.")
 
+This is the font texture, you won't see much on a white background though.
+
 ![Font texture](font.png "Font texture.")
 
 Here is the working result.
@@ -29,3 +33,4 @@ Here is the working result.
 This is the result when turning on 16x multisampling.
 
 ![Render with multisampling](3.png "Render with multisampling")
+
