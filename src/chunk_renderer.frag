@@ -1,9 +1,9 @@
 #version 400 core
 
+uniform sampler2DArray texture_atlas;
+
 in vec2 fs_tex_pos;
 flat in uint fs_blk_type;
-
-uniform sampler2DArray texture_atlas;
 
 out vec4 color;
 
