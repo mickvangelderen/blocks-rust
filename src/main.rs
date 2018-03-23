@@ -23,6 +23,7 @@ pub mod glw;
 pub mod cube;
 pub mod rate_counter;
 pub mod chunk_renderer;
+pub mod text_renderer;
 
 use block::Block;
 use cgmath::*;
@@ -30,6 +31,7 @@ use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk::Chunk;
 use chunk_renderer::ChunkRenderer;
+use text_renderer::TextRenderer;
 use glutin::GlContext;
 use std::{thread, time};
 
@@ -76,6 +78,7 @@ fn main() {
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
     let chunk_renderer = ChunkRenderer::new();
+    let text_renderer = TextRenderer::new();
 
     let mut should_stop = false;
     let mut has_focus = false;
@@ -324,7 +327,9 @@ fn main() {
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
 
-        chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        // chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+
+        text_renderer.render(&pos_from_wld_to_clp_space, "Hello World!\nHow are you doing today?");
 
         gl_window.swap_buffers().unwrap();
 
