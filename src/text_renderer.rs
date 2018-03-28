@@ -4,50 +4,78 @@ use glw;
 use image;
 
 struct Vertex {
+    #[allow(unused)]
     ver_pos: Vector3<f32>,
+    #[allow(unused)]
     tex_pos: Vector2<f32>,
 }
+
+const VER_POS_OFF: f32 = 0.5;
+
+// +-----------+ <- box
+// | +-------+ <- glyph + padding
+// | | +---+ <- glyph
+// | | | G | | |  ... repeated GLYPH_PER_ROW times
+// | | +---+ | |
+// | +-------+ |
+// +-----------+
+
+// NOTE(mickvangelderen): Depends on the font texture we are using.
+// Assuming rectangular glyphs and rectangular texture here.
+const GLYPHS_PER_SIDE: u32 = 16;
+
+// NOTE(mickvangelderen): Depends on the font texture we are using.
+const TEX_POS_OFF: f32 = {
+    const BOX: u32 = 128;
+    const GLYPH: u32 = 64;
+    const PAD: u32 = 4;
+    const SPACE: f32 = (BOX - GLYPH - 2*PAD) as f32/2.0;
+    SPACE/BOX as f32
+};
 
 static VERTEX_DATA: [Vertex; 4] = [
     Vertex {
         ver_pos: Vector3 {
-            x: -0.5,
-            y: -0.5,
-            z: 0.0,
-        },
-        tex_pos: Vector2 { x: 0.0, y: 0.0 },
-    },
-    Vertex {
-        ver_pos: Vector3 {
-            x: 0.5,
-            y: -0.5,
+            x: -VER_POS_OFF,
+            y: -VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
-            x: 1.0 / 16.0,
-            y: 0.0,
+            x: TEX_POS_OFF/GLYPHS_PER_SIDE as f32,
+            y: TEX_POS_OFF/GLYPHS_PER_SIDE as f32,
         },
     },
     Vertex {
         ver_pos: Vector3 {
-            x: -0.5,
-            y: 0.5,
+            x: VER_POS_OFF,
+            y: -VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
-            x: 0.0,
-            y: 1.0 / 16.0,
+            x: (1.0 - TEX_POS_OFF)/GLYPHS_PER_SIDE as f32,
+            y: TEX_POS_OFF/GLYPHS_PER_SIDE as f32,
         },
     },
     Vertex {
         ver_pos: Vector3 {
-            x: 0.5,
-            y: 0.5,
+            x: -VER_POS_OFF,
+            y: VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
-            x: 1.0 / 16.0,
-            y: 1.0 / 16.0,
+            x: TEX_POS_OFF/GLYPHS_PER_SIDE as f32,
+            y: (1.0 - TEX_POS_OFF)/GLYPHS_PER_SIDE as f32,
+        },
+    },
+    Vertex {
+        ver_pos: Vector3 {
+            x: VER_POS_OFF,
+            y: VER_POS_OFF,
+            z: 0.0,
+        },
+        tex_pos: Vector2 {
+            x: (1.0 - TEX_POS_OFF)/GLYPHS_PER_SIDE as f32,
+            y: (1.0 - TEX_POS_OFF)/GLYPHS_PER_SIDE as f32,
         },
     },
 ];
@@ -228,13 +256,13 @@ impl TextRenderer {
 
             glw::bind_texture(glw::TEXTURE_2D, &name);
 
-            glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::NEAREST);
-            glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::NEAREST);
+            glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
+            glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
             glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::CLAMP_TO_EDGE);
             glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::CLAMP_TO_EDGE);
 
             unsafe {
-                let img = image::open("assets/font.png").unwrap();
+                let img = image::open("assets/font-padded-sdf.png").unwrap();
                 let img = img.flipv().to_rgba();
                 gl::TexImage2D(
                     gl::TEXTURE_2D,                                // target
@@ -275,7 +303,7 @@ impl TextRenderer {
                     b' ' => {
                         offset.x += 1.0;
                     }
-                    b'\n' => {
+                    b'\n' | b'\r' => {
                         offset.x = 0.0;
                         offset.y += -1.0;
                     }

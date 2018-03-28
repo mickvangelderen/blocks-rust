@@ -20,9 +20,9 @@ pub mod block;
 pub mod chunk;
 #[macro_use]
 pub mod glw;
+pub mod chunk_renderer;
 pub mod cube;
 pub mod rate_counter;
-pub mod chunk_renderer;
 pub mod text_renderer;
 
 use block::Block;
@@ -31,9 +31,9 @@ use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk::Chunk;
 use chunk_renderer::ChunkRenderer;
-use text_renderer::TextRenderer;
 use glutin::GlContext;
 use std::{thread, time};
+use text_renderer::TextRenderer;
 
 fn main() {
     let mut chunk = Chunk {
@@ -113,9 +113,9 @@ fn main() {
 
     let mut camera = glw::Camera {
         position: Vector3 {
-            x: 0.0,
-            y: 2.0,
-            z: 5.0,
+            x: 4.0,
+            y: 0.0,
+            z: 10.0,
         },
         yaw: Rad(0.0),
         pitch: Rad(0.0),
@@ -124,6 +124,8 @@ fn main() {
         angular_velocity: 0.2,
         zoom_velocity: 0.3,
     };
+
+    let mut user_input = String::new();
 
     while !should_stop {
         let now = time::Instant::now();
@@ -176,6 +178,14 @@ fn main() {
                                     _ => (),
                                 }
                             }
+                            ReceivedCharacter(c) => match c {
+                                '\u{8}' => {
+                                    user_input.pop();
+                                }
+                                _ => {
+                                    user_input.push(c);
+                                }
+                            },
                             Focused(state) => {
                                 has_focus = state;
                             }
@@ -329,7 +339,7 @@ fn main() {
 
         // chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
 
-        text_renderer.render(&pos_from_wld_to_clp_space, "Hello World!\nHow are you doing today?");
+        text_renderer.render(&pos_from_wld_to_clp_space, &user_input);
 
         gl_window.swap_buffers().unwrap();
 
