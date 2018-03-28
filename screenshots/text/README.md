@@ -1,4 +1,4 @@
-[commit 1079f09df9d917fe46b0614c2caff6b4643a700c](https://github.com/mickvangelderen/blocks-rust/tree/1079f09df9d917fe46b0614c2caff6b4643a700c)
+## [commit 1079f09df9d917fe46b0614c2caff6b4643a700c](https://github.com/mickvangelderen/blocks-rust/tree/1079f09df9d917fe46b0614c2caff6b4643a700c)
 
 Implemented basic text rendering. Using instanced rendering to render each
 glyph. The texture coordinates for each glyph are determined by the character
@@ -34,3 +34,16 @@ This is the result when turning on 16x multisampling.
 
 ![Render with multisampling](3.png "Render with multisampling")
 
+## [commit df929c767b575765c861f6c52e8112a2beab4f34](https://github.com/mickvangelderen/blocks-rust/commit/df929c767b575765c861f6c52e8112a2beab4f34)
+
+Render text using a [signed distance
+field](http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf).
+Not sure if my implementation is exactly what is described in the paper because
+I just went with what I thought was good, and that seemed to work.
+
+![SDF with artifacts](4-sdf-artifacts.png)
+
+Applied padding (larger than the maximum distance) before calculating the SDF so
+that the glyphs do not influence eachother.
+
+![SDF](5-sdf.png)
