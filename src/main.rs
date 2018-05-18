@@ -145,40 +145,40 @@ fn main() {
             let mut mouse_dscroll = 0.0;
 
             events_loop.poll_events(|event| {
-                use glutin::Event::*;
+                use glutin::Event;
                 match event {
-                    WindowEvent { event, .. } => {
-                        use glutin::ElementState::*;
-                        use glutin::WindowEvent::*;
+                    Event::WindowEvent { event, .. } => {
+                        use glutin::ElementState;
+                        use glutin::WindowEvent;
                         match event {
-                            Closed => should_stop = true,
-                            Resized(width, height) => {
+                            WindowEvent::CloseRequested => should_stop = true,
+                            WindowEvent::Resized(width, height) => {
                                 new_width = width;
                                 new_height = height;
                             }
-                            KeyboardInput { input, .. } => {
-                                use glutin::VirtualKeyCode::*;
+                            WindowEvent::KeyboardInput { input, .. } => {
+                                use glutin::VirtualKeyCode;
                                 match input.virtual_keycode {
-                                    Some(Escape) => {
-                                        if input.state == Pressed && has_focus {
+                                    Some(VirtualKeyCode::Escape) => {
+                                        if input.state == ElementState::Pressed && has_focus {
                                             should_stop = true;
                                         }
                                     }
-                                    Some(F11) => {
-                                        if input.state == Pressed && has_focus {
+                                    Some(VirtualKeyCode::F11) => {
+                                        if input.state == ElementState::Pressed && has_focus {
                                             new_fullscreen = !new_fullscreen;
                                         }
                                     }
-                                    Some(W) => input_forward = input.state,
-                                    Some(S) => input_backward = input.state,
-                                    Some(A) => input_left = input.state,
-                                    Some(D) => input_right = input.state,
-                                    Some(Q) => input_up = input.state,
-                                    Some(Z) => input_down = input.state,
+                                    Some(VirtualKeyCode::W) => input_forward = input.state,
+                                    Some(VirtualKeyCode::S) => input_backward = input.state,
+                                    Some(VirtualKeyCode::A) => input_left = input.state,
+                                    Some(VirtualKeyCode::D) => input_right = input.state,
+                                    Some(VirtualKeyCode::Q) => input_up = input.state,
+                                    Some(VirtualKeyCode::Z) => input_down = input.state,
                                     _ => (),
                                 }
                             }
-                            ReceivedCharacter(c) => match c {
+                            WindowEvent::ReceivedCharacter(c) => match c {
                                 '\u{8}' => {
                                     user_input.pop();
                                 }
@@ -186,20 +186,20 @@ fn main() {
                                     user_input.push(c);
                                 }
                             },
-                            Focused(state) => {
+                            WindowEvent::Focused(state) => {
                                 has_focus = state;
                             }
                             _ => (),
                         }
                     }
-                    DeviceEvent {
+                    Event::DeviceEvent {
                         device_id, event, ..
                     } => {
-                        use glutin::DeviceEvent::*;
+                        use glutin::DeviceEvent;
                         match event {
-                            Added => println!("Added device {:?}", device_id),
-                            Removed => println!("Removed device {:?}", device_id),
-                            Motion { axis, value } => match axis {
+                            DeviceEvent::Added => println!("Added device {:?}", device_id),
+                            DeviceEvent::Removed => println!("Removed device {:?}", device_id),
+                            DeviceEvent::Motion { axis, value } => match axis {
                                 0 => mouse_dx += value,
                                 1 => mouse_dy += value,
                                 3 => mouse_dscroll += value,
@@ -212,31 +212,31 @@ fn main() {
                 }
             });
 
-            use glutin::ElementState::*;
+            use glutin::ElementState;
 
             camera.update(&glw::CameraUpdate {
                 delta_time: 1.0 / DESIRED_UPS as f32,
                 delta_position: Vector3 {
                     x: match input_left {
-                        Pressed => -1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => -1.0,
+                        ElementState::Released => 0.0,
                     } + match input_right {
-                        Pressed => 1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => 1.0,
+                        ElementState::Released => 0.0,
                     },
                     y: match input_up {
-                        Pressed => 1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => 1.0,
+                        ElementState::Released => 0.0,
                     } + match input_down {
-                        Pressed => -1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => -1.0,
+                        ElementState::Released => 0.0,
                     },
                     z: match input_forward {
-                        Pressed => -1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => -1.0,
+                        ElementState::Released => 0.0,
                     } + match input_backward {
-                        Pressed => 1.0,
-                        Released => 0.0,
+                        ElementState::Pressed => 1.0,
+                        ElementState::Released => 0.0,
                     },
                 },
                 delta_yaw: Rad(mouse_dx as f32),
@@ -244,37 +244,37 @@ fn main() {
                 delta_scroll: mouse_dscroll as f32,
             });
 
-            if input_forward == Pressed {
+            if input_forward == ElementState::Pressed {
                 r += 1.0 / DESIRED_UPS as f32;
                 if r > 1.0 {
                     r = 1.0;
                 }
             }
-            if input_backward == Pressed {
+            if input_backward == ElementState::Pressed {
                 r -= 1.0 / DESIRED_UPS as f32;
                 if r < 0.0 {
                     r = 0.0;
                 }
             }
-            if input_left == Pressed {
+            if input_left == ElementState::Pressed {
                 g += 1.0 / DESIRED_UPS as f32;
                 if g > 1.0 {
                     g = 1.0;
                 }
             }
-            if input_right == Pressed {
+            if input_right == ElementState::Pressed {
                 g -= 1.0 / DESIRED_UPS as f32;
                 if g < 0.0 {
                     g = 0.0;
                 }
             }
-            if input_up == Pressed {
+            if input_up == ElementState::Pressed {
                 b += 1.0 / DESIRED_UPS as f32;
                 if b > 1.0 {
                     b = 1.0;
                 }
             }
-            if input_down == Pressed {
+            if input_down == ElementState::Pressed {
                 b -= 1.0 / DESIRED_UPS as f32;
                 if b < 0.0 {
                     b = 0.0;
