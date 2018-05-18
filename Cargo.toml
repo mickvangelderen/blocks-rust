@@ -1,13 +1,11 @@
 [package]
+authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
 name = "blocks"
 version = "0.1.0"
-authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
-
+[dependencies]
+cgmath = "0.16.1"
+gl = "0.10.0"
+glutin = "0.15.0"
+image = "0.19.0"
 [profile.dev]
 opt-level = 2
-
-[dependencies]
-gl = "*"
-glutin = "*"
-cgmath = "*"
-image = "*"
