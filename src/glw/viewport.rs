@@ -11,12 +11,22 @@ pub struct Viewport {
 impl Viewport {
     #[inline]
     pub fn new(width: i32, height: i32) -> Self {
-        Viewport { x: 0, y: 0, width, height }
+        Viewport {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        }
     }
 
     #[inline]
     pub fn with_position(x: i32, y: i32, width: i32, height: i32) -> Self {
-        Viewport { x, y, width, height }
+        Viewport {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     #[inline]

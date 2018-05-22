@@ -9,7 +9,7 @@ pub struct TextureName(Name);
 impl TextureName {
     #[inline]
     pub unsafe fn as_u32(&self) -> u32 {
-        (self.0).get()
+        self.0.get()
     }
 }
 
@@ -97,7 +97,7 @@ pub const MIRROR_CLAMP_TO_EDGE: TextureWrap = TextureWrap::MIRROR_CLAMP_TO_EDGE;
 
 #[inline]
 pub fn gen_textures(names: &mut [Option<TextureName>]) {
-    // This *should* work because Option<NonZero<u32>> should be
+    // This *should* work because Option<Name> should be
     // represented as a single u32 where 0 means None and x > 0 means
     // Some(NonZero(x)).
     unsafe {
@@ -105,7 +105,7 @@ pub fn gen_textures(names: &mut [Option<TextureName>]) {
     }
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct MaxCombinedTextureImageUnits(u32);
 
 impl MaxCombinedTextureImageUnits {
@@ -118,7 +118,7 @@ impl MaxCombinedTextureImageUnits {
     }
 }
 
-#[derive(Clone,Copy)]
+#[derive(Clone, Copy)]
 pub struct TextureUnit(u32);
 
 impl TextureUnit {
@@ -190,23 +190,17 @@ pub fn tex_parameter_mag_filter(target: TextureTarget, value: TextureFilter) {
 
 #[inline]
 pub fn tex_parameter_wrap_s(target: TextureTarget, value: TextureWrap) {
-    unsafe {
-        gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_S, value as i32)
-    }
+    unsafe { gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_S, value as i32) }
 }
 
 #[inline]
 pub fn tex_parameter_wrap_t(target: TextureTarget, value: TextureWrap) {
-    unsafe {
-        gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_T, value as i32)
-    }
+    unsafe { gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_T, value as i32) }
 }
 
 #[inline]
 pub fn tex_parameter_wrap_r(target: TextureTarget, value: TextureWrap) {
-    unsafe {
-        gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_R, value as i32)
-    }
+    unsafe { gl::TexParameteri(target as u32, gl::TEXTURE_WRAP_R, value as i32) }
 }
 
 #[inline]

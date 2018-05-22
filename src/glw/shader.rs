@@ -137,7 +137,10 @@ macro_rules! impl_shader_kind {
             }
 
             #[inline]
-            pub fn compile(self, sources: &[&str]) -> Result<$CompiledKindShaderName, CompilationFailed> {
+            pub fn compile(
+                self,
+                sources: &[&str],
+            ) -> Result<$CompiledKindShaderName, CompilationFailed> {
                 self.0.compile(sources).map($CompiledKindShaderName)
             }
         }
@@ -164,7 +167,7 @@ macro_rules! impl_shader_kind {
                 self.0.as_ref()
             }
         }
-    }
+    };
 }
 
 impl_shader_kind!(

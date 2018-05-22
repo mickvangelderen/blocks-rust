@@ -27,9 +27,9 @@ pub mod text_renderer;
 
 use block::Block;
 use cgmath::*;
+use chunk::Chunk;
 use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
-use chunk::Chunk;
 use chunk_renderer::ChunkRenderer;
 use glutin::GlContext;
 use std::{thread, time};
@@ -67,7 +67,7 @@ fn main() {
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
             .with_gl_profile(glutin::GlProfile::Core)
             .with_vsync(true),
-            // .with_multisampling(16),
+        // .with_multisampling(16),
         &events_loop,
     ).unwrap();
 

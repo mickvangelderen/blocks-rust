@@ -1,8 +1,8 @@
 use super::name::Name;
-use std::marker::PhantomData;
-use std::ffi::CStr;
 use super::shader::CompiledShaderName;
 use gl;
+use std::ffi::CStr;
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct ProgramName(Name);

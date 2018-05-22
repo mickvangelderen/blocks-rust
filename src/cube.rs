@@ -6,7 +6,7 @@ pub struct Vertex {
     tex_pos: Vector2<f32>,
 }
 
-pub static VERTEX_DATA: [Vertex; 4*6 - 4] = [
+pub static VERTEX_DATA: [Vertex; 4 * 6 - 4] = [
     // 00: -X 00
     Vertex {
         ver_pos: Vector3 {

@@ -1,7 +1,7 @@
 use block::Block;
+use cgmath::prelude::*;
 use cgmath::Matrix4;
 use cgmath::Vector3;
-use cgmath::prelude::*;
 use chunk;
 use chunk::Chunk;
 use cube;
@@ -58,7 +58,8 @@ impl ChunkRenderer {
 
         unsafe {
             glw::use_program(&program_name);
-            let texture_atlas_loc: i32 = gl::GetUniformLocation(program_name.as_u32(), gl_str!("texture_atlas"));
+            let texture_atlas_loc: i32 =
+                gl::GetUniformLocation(program_name.as_u32(), gl_str!("texture_atlas"));
             gl::Uniform1i(texture_atlas_loc, 0);
         }
 

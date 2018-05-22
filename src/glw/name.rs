@@ -1,4 +1,4 @@
-use ::std::num::NonZeroU32;
+use std::num::NonZeroU32;
 
 #[derive(Debug)]
 pub struct Name(NonZeroU32);

@@ -49,7 +49,8 @@ impl Camera {
             self.position + delta_position * self.positional_velocity * update.delta_time;
         let new_yaw = self.yaw + update.delta_yaw * self.angular_velocity * update.delta_time;
         let new_pitch = self.pitch + update.delta_pitch * self.angular_velocity * update.delta_time;
-        let new_fovy = self.fovy + Rad(update.delta_scroll) * self.zoom_velocity * update.delta_time;
+        let new_fovy =
+            self.fovy + Rad(update.delta_scroll) * self.zoom_velocity * update.delta_time;
 
         // Apply updates.
         self.position = new_position;
