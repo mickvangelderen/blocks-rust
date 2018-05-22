@@ -1,4 +1,5 @@
 #[allow(unused)]
+#[macro_export]
 macro_rules! gl_str {
     ($s:expr) => {
         concat!($s, "\0").as_ptr() as *const i8
@@ -6,6 +7,7 @@ macro_rules! gl_str {
 }
 
 #[allow(unused)]
+#[macro_export]
 macro_rules! static_cstr {
     ($s:expr) => {{
         // Limit type.

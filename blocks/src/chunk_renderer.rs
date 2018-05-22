@@ -1,3 +1,5 @@
+extern crate glw;
+
 use block::Block;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -6,7 +8,6 @@ use chunk;
 use chunk::Chunk;
 use cube;
 use gl;
-use glw;
 use image;
 
 pub struct ChunkRenderer {
@@ -174,7 +175,7 @@ impl ChunkRenderer {
             glw::tex_parameter_wrap_t(glw::TEXTURE_2D_ARRAY, glw::CLAMP_TO_EDGE);
 
             unsafe {
-                let img = image::open("assets/stone_xyz.png").unwrap();
+                let img = image::open("../assets/stone_xyz.png").unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);
@@ -194,7 +195,7 @@ impl ChunkRenderer {
             }
 
             unsafe {
-                let img = image::open("assets/dirt_xyz.png").unwrap();
+                let img = image::open("../assets/dirt_xyz.png").unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);

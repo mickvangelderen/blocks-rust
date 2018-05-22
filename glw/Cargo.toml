@@ -1,7 +1,6 @@
 [package]
-name = "sdf_tool"
+name = "glw"
 version = "0.1.0"
 authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
 [dependencies]
-image = "*"
-
+gl = "0.10.0"

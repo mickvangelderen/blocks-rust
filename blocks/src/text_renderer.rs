@@ -262,7 +262,7 @@ impl TextRenderer {
             glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::CLAMP_TO_EDGE);
 
             unsafe {
-                let img = image::open("assets/font-padded-sdf.png").unwrap();
+                let img = image::open("../assets/font-padded-sdf.png").unwrap();
                 let img = img.flipv().to_rgba();
                 gl::TexImage2D(
                     gl::TEXTURE_2D,                                // target

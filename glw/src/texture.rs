@@ -1,7 +1,6 @@
+extern crate gl;
+
 use super::name::Name;
-// use std::marker::PhantomData;
-// use phantomdata::into_phantom_data;
-use gl;
 
 #[derive(Debug)]
 pub struct TextureName(Name);

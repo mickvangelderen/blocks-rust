@@ -7,19 +7,19 @@ paint blocks
 /*
 x, y, z
  */
-#![feature(nonzero)]
 #![feature(duration_extras)]
 
 extern crate cgmath;
 extern crate core;
 extern crate gl;
 extern crate glutin;
+#[macro_use]
+extern crate glw;
 extern crate image;
 
 pub mod block;
+pub mod camera;
 pub mod chunk;
-#[macro_use]
-pub mod glw;
 pub mod chunk_renderer;
 pub mod cube;
 pub mod rate_counter;
@@ -111,7 +111,7 @@ fn main() {
     let mut ups_counter = rate_counter::RateCounter::with_capacity(30);
     let mut ups = std::f64::NAN;
 
-    let mut camera = glw::Camera {
+    let mut camera = camera::Camera {
         position: Vector3 {
             x: 4.0,
             y: 0.0,
@@ -214,7 +214,7 @@ fn main() {
 
             use glutin::ElementState;
 
-            camera.update(&glw::CameraUpdate {
+            camera.update(&camera::CameraUpdate {
                 delta_time: 1.0 / DESIRED_UPS as f32,
                 delta_position: Vector3 {
                     x: match input_left {
@@ -337,7 +337,7 @@ fn main() {
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
 
-        // chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
 
         text_renderer.render(&pos_from_wld_to_clp_space, &user_input);
 

@@ -1,6 +1,7 @@
+extern crate gl;
+
 use super::name::Name;
 use super::shader::CompiledShaderName;
-use gl;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 
