@@ -1,6 +1,8 @@
-extern crate blocks;
 extern crate glutin;
 extern crate gl;
+extern crate glw;
+
+use glutin::*;
 
 #[test]
 fn create_a_program() {
@@ -12,7 +14,7 @@ fn create_a_program() {
 
     unsafe { window.make_current().expect("Couldn't make window current") };
 
-    gl::Gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+    gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
 
-    let program_name = blocks::glw::ProgramName::new().unwrap();
+    let program_name = glw::ProgramName::new().unwrap();
 }
