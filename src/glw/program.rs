@@ -1,15 +1,15 @@
-use core::nonzero::NonZero;
+use super::name::Name;
 use std::marker::PhantomData;
 use std::ffi::CStr;
 use super::shader::CompiledShaderName;
 use gl;
 
 #[derive(Debug)]
-pub struct ProgramName(NonZero<u32>);
+pub struct ProgramName(Name);
 
 impl ProgramName {
     pub fn new() -> Option<Self> {
-        NonZero::new(unsafe { gl::CreateProgram() }).map(ProgramName)
+        Name::new(unsafe { gl::CreateProgram() }).map(ProgramName)
     }
 
     pub unsafe fn as_u32(&self) -> u32 {

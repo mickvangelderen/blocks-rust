@@ -1,11 +1,10 @@
-
-use core::nonzero::NonZero;
+use super::name::Name;
 // use std::marker::PhantomData;
 // use phantomdata::into_phantom_data;
 use gl;
 
 #[derive(Debug)]
-pub struct TextureName(NonZero<u32>);
+pub struct TextureName(Name);
 
 impl TextureName {
     #[inline]

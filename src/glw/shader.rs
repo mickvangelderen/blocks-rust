@@ -1,4 +1,4 @@
-use core::nonzero::NonZero;
+use super::name::Name;
 use gl;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -13,7 +13,7 @@ pub enum ShaderKind {
 }
 
 #[derive(Debug)]
-pub struct ShaderName(NonZero<u32>);
+pub struct ShaderName(Name);
 
 #[derive(Debug, Clone)]
 pub struct CompilationFailed(String);
@@ -36,7 +36,7 @@ impl error::Error for CompilationFailed {
 impl ShaderName {
     #[inline]
     fn new(kind: ShaderKind) -> Option<Self> {
-        NonZero::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
+        Name::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
     }
 
     #[inline]

@@ -1,4 +1,5 @@
 mod camera;
+mod name;
 mod program;
 mod shader;
 mod viewport;
