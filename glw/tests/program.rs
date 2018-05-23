@@ -1,20 +1,28 @@
-extern crate glutin;
 extern crate gl;
+extern crate glutin;
 extern crate glw;
 
-use glutin::*;
+mod support;
 
 #[test]
 fn create_a_program() {
-    let width: i32 = 256;
-    let height: i32 = 256;
-    let window = glutin::HeadlessRendererBuilder::new(width as u32, height as u32)
-        .build()
-        .unwrap();
+    {
+        let (_events_loop, _window) = support::build_display();
 
-    unsafe { window.make_current().expect("Couldn't make window current") };
+        let program_name = glw::ProgramName::new().unwrap();
 
-    gl::load_with(|symbol| window.get_proc_address(symbol) as *const _);
+        unsafe {
+            assert_eq!(program_name.as_u32(), 1);
+        }
+    }
 
-    let program_name = glw::ProgramName::new().unwrap();
+    {
+        let (_events_loop, _window) = support::build_display();
+
+        let program_name = glw::ProgramName::new().unwrap();
+
+        unsafe {
+            assert_eq!(program_name.as_u32(), 1);
+        }
+    }
 }
