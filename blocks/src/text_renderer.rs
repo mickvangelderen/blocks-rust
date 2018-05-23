@@ -3,6 +3,9 @@ use gl;
 use glw;
 use image;
 
+use glw::BufferNameArray;
+
+
 struct Vertex {
     #[allow(unused)]
     ver_pos: Vector3<f32>,
@@ -94,9 +97,9 @@ pub struct TextRenderer {
     program_name: glw::LinkedProgramName,
     texture_name: glw::TextureName,
     vertex_array_name: u32,
-    vertex_buffer_name: u32,
-    element_buffer_name: u32,
-    character_buffer_name: u32,
+    _vertex_buffer_name: glw::BufferName,
+    _element_buffer_name: glw::BufferName,
+    character_buffer_name: glw::BufferName,
 }
 
 impl TextRenderer {
@@ -128,14 +131,10 @@ impl TextRenderer {
             names[0]
         };
 
-        let (vertex_buffer_name, element_buffer_name, character_buffer_name) = unsafe {
-            let mut names: [u32; 3] = ::std::mem::uninitialized();
-            gl::GenBuffers(names.len() as i32, names.as_mut_ptr());
-            assert!(names[0] != 0, "Failed to create buffer.");
-            assert!(names[1] != 0, "Failed to create buffer.");
-            assert!(names[2] != 0, "Failed to create buffer.");
-            (names[0], names[1], names[2])
-        };
+        let [vertex_buffer_name, element_buffer_name, character_buffer_name] = <[Option<glw::BufferName>; 3]>::new();
+        let vertex_buffer_name = vertex_buffer_name.unwrap();
+        let element_buffer_name = element_buffer_name.unwrap();
+        let character_buffer_name = character_buffer_name.unwrap();
 
         unsafe {
             glw::use_program(&program_name);
@@ -149,7 +148,7 @@ impl TextRenderer {
             gl::BindVertexArray(vertex_array_name);
 
             // Set up vertex buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name.as_u32());
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -187,7 +186,7 @@ impl TextRenderer {
             );
 
             // Set up character buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, character_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, character_buffer_name.as_u32());
 
             // We create the data dynamically from text. Not sure how to deal with allocation here.
             // gl::BufferData(
@@ -233,7 +232,7 @@ impl TextRenderer {
             }
 
             // Associate and set up element array.
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name);
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name.as_u32());
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&ELEMENT_DATA) as isize,
@@ -286,8 +285,8 @@ impl TextRenderer {
             program_name,
             texture_name,
             vertex_array_name,
-            vertex_buffer_name,
-            element_buffer_name,
+            _vertex_buffer_name: vertex_buffer_name,
+            _element_buffer_name: element_buffer_name,
             character_buffer_name,
         }
     }
@@ -322,7 +321,7 @@ impl TextRenderer {
         glw::use_program(&self.program_name);
 
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.character_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.character_buffer_name.as_u32());
             gl::BufferData(
                 gl::ARRAY_BUFFER,                                                     // target
                 (::std::mem::size_of::<Character>() * character_data.len()) as isize, // size

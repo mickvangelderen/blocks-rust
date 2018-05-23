@@ -10,13 +10,15 @@ use cube;
 use gl;
 use image;
 
+use glw::BufferNameArray;
+
 pub struct ChunkRenderer {
     program_name: glw::LinkedProgramName,
     texture_atlas_name: glw::TextureName,
     vertex_array_name: u32,
-    vertex_buffer_name: u32,
-    element_buffer_name: u32,
-    block_buffer_name: u32,
+    _vertex_buffer_name: glw::BufferName,
+    _element_buffer_name: glw::BufferName,
+    block_buffer_name: glw::BufferName,
 }
 
 impl ChunkRenderer {
@@ -48,14 +50,10 @@ impl ChunkRenderer {
             names[0]
         };
 
-        let (vertex_buffer_name, element_buffer_name, block_buffer_name) = unsafe {
-            let mut names: [u32; 3] = ::std::mem::uninitialized();
-            gl::GenBuffers(names.len() as i32, names.as_mut_ptr());
-            assert!(names[0] != 0, "Failed to create buffer.");
-            assert!(names[1] != 0, "Failed to create buffer.");
-            assert!(names[2] != 0, "Failed to create buffer.");
-            (names[0], names[1], names[2])
-        };
+        let [vertex_buffer_name, element_buffer_name, block_buffer_name] = <[Option<glw::BufferName>; 3]>::new();
+        let vertex_buffer_name = vertex_buffer_name.unwrap();
+        let element_buffer_name = element_buffer_name.unwrap();
+        let block_buffer_name = block_buffer_name.unwrap();
 
         unsafe {
             glw::use_program(&program_name);
@@ -68,7 +66,7 @@ impl ChunkRenderer {
             gl::BindVertexArray(vertex_array_name);
 
             // Set up vertex buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name.as_u32());
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -106,7 +104,7 @@ impl ChunkRenderer {
             );
 
             // Set up block type buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name.as_u32());
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -136,7 +134,7 @@ impl ChunkRenderer {
             );
 
             // Associate and set up element array.
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name);
+            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name.as_u32());
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&cube::ELEMENT_DATA) as isize,
@@ -223,8 +221,8 @@ impl ChunkRenderer {
             program_name,
             texture_atlas_name,
             vertex_array_name,
-            vertex_buffer_name,
-            element_buffer_name,
+            _vertex_buffer_name: vertex_buffer_name,
+            _element_buffer_name: element_buffer_name,
             block_buffer_name,
         }
     }
@@ -232,7 +230,7 @@ impl ChunkRenderer {
     pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, chunk: &Chunk) {
         unsafe {
             // Update block type buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.block_buffer_name);
+            gl::BindBuffer(gl::ARRAY_BUFFER, self.block_buffer_name.as_u32());
             gl::BufferSubData(
                 gl::ARRAY_BUFFER,                                                     // target
                 0,                                                                    // offset
