@@ -23,45 +23,45 @@ impl Drop for TextureName {
 
 #[repr(u32)]
 pub enum TextureTarget {
-    TEXTURE_2D = gl::TEXTURE_2D,
-    TEXTURE_2D_ARRAY = gl::TEXTURE_2D_ARRAY,
+    Texture2D = gl::TEXTURE_2D,
+    Texture2DArray = gl::TEXTURE_2D_ARRAY,
 }
 
-pub const TEXTURE_2D: TextureTarget = TextureTarget::TEXTURE_2D;
-pub const TEXTURE_2D_ARRAY: TextureTarget = TextureTarget::TEXTURE_2D_ARRAY;
+pub const TEXTURE_2D: TextureTarget = TextureTarget::Texture2D;
+pub const TEXTURE_2D_ARRAY: TextureTarget = TextureTarget::Texture2DArray;
 
 #[repr(u32)]
 pub enum TextureFilter {
     /// Returns the value of the texture element that is nearest (in
     /// Manhattan distance) to the specified texture coordinates.
-    NEAREST = gl::NEAREST,
+    Nearest = gl::NEAREST,
 
     /// Returns the weighted average of the four texture elements that
     /// are closest to the specified texture coordinates. These can
     /// include items wrapped or repeated from other parts of a texture,
     /// depending on the values of GL_TEXTURE_WRAP_S and
     /// GL_TEXTURE_WRAP_T, and on the exact mapping.
-    LINEAR = gl::LINEAR,
+    Linear = gl::LINEAR,
 
     /// Chooses the mipmap that most closely matches the size of the
     /// pixel being textured and uses the GL_NEAREST criterion (the
     /// texture element closest to the specified texture coordinates) to
     /// produce a texture value.
-    NEAREST_MIPMAP_NEAREST = gl::NEAREST_MIPMAP_NEAREST,
+    NearestMipmapNearest = gl::NEAREST_MIPMAP_NEAREST,
 
     /// Chooses the mipmap that most closely matches the size of the
     /// pixel being textured and uses the GL_LINEAR criterion (a
     /// weighted average of the four texture elements that are closest
     /// to the specified texture coordinates) to produce a texture
     /// value.
-    LINEAR_MIPMAP_NEAREST = gl::LINEAR_MIPMAP_NEAREST,
+    LinearMipmapNearest = gl::LINEAR_MIPMAP_NEAREST,
 
     /// Chooses the two mipmaps that most closely match the size of the
     /// pixel being textured and uses the GL_NEAREST criterion (the
     /// texture element closest to the specified texture coordinates )
     /// to produce a texture value from each mipmap. The final texture
     /// value is a weighted average of those two values.
-    NEAREST_MIPMAP_LINEAR = gl::NEAREST_MIPMAP_LINEAR,
+    NearestMipmapLinear = gl::NEAREST_MIPMAP_LINEAR,
 
     /// Chooses the two mipmaps that most closely match the size of the
     /// pixel being textured and uses the GL_LINEAR criterion (a
@@ -69,30 +69,30 @@ pub enum TextureFilter {
     /// specified texture coordinates) to produce a texture value from
     /// each mipmap. The final texture value is a weighted average of
     /// those two values.
-    LINEAR_MIPMAP_LINEAR = gl::LINEAR_MIPMAP_LINEAR,
+    LinearMipmapLinear = gl::LINEAR_MIPMAP_LINEAR,
 }
 
-pub const NEAREST: TextureFilter = TextureFilter::NEAREST;
-pub const LINEAR: TextureFilter = TextureFilter::LINEAR;
-pub const NEAREST_MIPMAP_NEAREST: TextureFilter = TextureFilter::NEAREST_MIPMAP_NEAREST;
-pub const LINEAR_MIPMAP_NEAREST: TextureFilter = TextureFilter::LINEAR_MIPMAP_NEAREST;
-pub const NEAREST_MIPMAP_LINEAR: TextureFilter = TextureFilter::NEAREST_MIPMAP_LINEAR;
-pub const LINEAR_MIPMAP_LINEAR: TextureFilter = TextureFilter::LINEAR_MIPMAP_LINEAR;
+pub const NEAREST: TextureFilter = TextureFilter::Nearest;
+pub const LINEAR: TextureFilter = TextureFilter::Linear;
+pub const NEAREST_MIPMAP_NEAREST: TextureFilter = TextureFilter::NearestMipmapNearest;
+pub const LINEAR_MIPMAP_NEAREST: TextureFilter = TextureFilter::LinearMipmapNearest;
+pub const NEAREST_MIPMAP_LINEAR: TextureFilter = TextureFilter::NearestMipmapLinear;
+pub const LINEAR_MIPMAP_LINEAR: TextureFilter = TextureFilter::LinearMipmapLinear;
 
 #[repr(u32)]
 pub enum TextureWrap {
-    CLAMP_TO_EDGE = gl::CLAMP_TO_EDGE,
-    CLAMP_TO_BORDER = gl::CLAMP_TO_BORDER,
-    MIRRORED_REPEAT = gl::MIRRORED_REPEAT,
-    REPEAT = gl::REPEAT,
-    MIRROR_CLAMP_TO_EDGE = gl::MIRROR_CLAMP_TO_EDGE,
+    ClampToEdge = gl::CLAMP_TO_EDGE,
+    ClampToBorder = gl::CLAMP_TO_BORDER,
+    MirroredRepeat = gl::MIRRORED_REPEAT,
+    Repeat = gl::REPEAT,
+    MirrorClampToEdge = gl::MIRROR_CLAMP_TO_EDGE,
 }
 
-pub const CLAMP_TO_EDGE: TextureWrap = TextureWrap::CLAMP_TO_EDGE;
-pub const CLAMP_TO_BORDER: TextureWrap = TextureWrap::CLAMP_TO_BORDER;
-pub const MIRRORED_REPEAT: TextureWrap = TextureWrap::MIRRORED_REPEAT;
-pub const REPEAT: TextureWrap = TextureWrap::REPEAT;
-pub const MIRROR_CLAMP_TO_EDGE: TextureWrap = TextureWrap::MIRROR_CLAMP_TO_EDGE;
+pub const CLAMP_TO_EDGE: TextureWrap = TextureWrap::ClampToEdge;
+pub const CLAMP_TO_BORDER: TextureWrap = TextureWrap::ClampToBorder;
+pub const MIRRORED_REPEAT: TextureWrap = TextureWrap::MirroredRepeat;
+pub const REPEAT: TextureWrap = TextureWrap::Repeat;
+pub const MIRROR_CLAMP_TO_EDGE: TextureWrap = TextureWrap::MirrorClampToEdge;
 
 #[inline]
 pub fn gen_textures(names: &mut [Option<TextureName>]) {

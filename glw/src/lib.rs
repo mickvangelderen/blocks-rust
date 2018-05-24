@@ -9,7 +9,6 @@ mod shader;
 mod string;
 #[cfg(test)]
 pub mod test;
-#[allow(non_camel_case_types)]
 mod texture;
 mod viewport;
 pub mod buffer_name;
