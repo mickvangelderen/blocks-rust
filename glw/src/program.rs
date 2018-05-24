@@ -2,7 +2,6 @@ extern crate gl;
 
 use super::name::Name;
 use super::shader::CompiledShaderName;
-use std::ffi::CStr;
 use std::marker::PhantomData;
 
 #[derive(Debug)]
@@ -77,23 +76,6 @@ pub struct LinkedProgramName(ProgramName);
 impl LinkedProgramName {
     pub unsafe fn as_u32(&self) -> u32 {
         self.0.as_u32()
-    }
-
-    pub fn uniform_location(&self, name: &CStr) -> UniformLocation {
-        let loc;
-        unsafe {
-            loc = gl::GetUniformLocation(self.as_u32(), name.as_ptr() as *const i8);
-        }
-        UniformLocation(loc, PhantomData)
-    }
-}
-
-#[derive(Debug)]
-pub struct UniformLocation<'p>(i32, PhantomData<&'p LinkedProgramName>);
-
-impl<'p> UniformLocation<'p> {
-    pub unsafe fn as_i32(&self) -> i32 {
-        self.0
     }
 }
 
