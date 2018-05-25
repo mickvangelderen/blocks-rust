@@ -5,7 +5,6 @@ use image;
 
 use glw::BufferNameArray;
 
-
 struct Vertex {
     #[allow(unused)]
     ver_pos: Vector3<f32>,
@@ -95,6 +94,8 @@ struct Character {
 
 pub struct TextRenderer {
     program_name: glw::LinkedProgramName,
+    _program_font_texture_loc: glw::UniformLocation<i32>,
+    program_pos_from_wld_to_clp_space: glw::UniformLocation<[f32; 16]>,
     texture_name: glw::TextureName,
     vertex_array_name: u32,
     _vertex_buffer_name: glw::BufferName,
@@ -124,6 +125,17 @@ impl TextRenderer {
             ])
             .unwrap();
 
+        let program_font_texture_loc = unsafe {
+            glw::UniformLocation::<i32>::new(&program_name, static_cstr!("font_texture")).unwrap()
+        };
+
+        let program_pos_from_wld_to_clp_space = unsafe {
+            glw::UniformLocation::<[f32; 16]>::new(
+                &program_name,
+                static_cstr!("pos_from_wld_to_clp_space"),
+            ).unwrap()
+        };
+
         let vertex_array_name = unsafe {
             let mut names: [u32; 1] = ::std::mem::uninitialized();
             gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr());
@@ -131,7 +143,8 @@ impl TextRenderer {
             names[0]
         };
 
-        let [vertex_buffer_name, element_buffer_name, character_buffer_name] = <[Option<glw::BufferName>; 3]>::new();
+        let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
+            <[Option<glw::BufferName>; 3]>::new();
         let vertex_buffer_name = vertex_buffer_name.unwrap();
         let element_buffer_name = element_buffer_name.unwrap();
         let character_buffer_name = character_buffer_name.unwrap();
@@ -139,11 +152,7 @@ impl TextRenderer {
         unsafe {
             glw::use_program(&program_name);
 
-            {
-                let loc = gl::GetUniformLocation(program_name.as_u32(), gl_str!("font_texture"));
-                assert!(loc != -1, "Couldn't find uniform location");
-                gl::Uniform1i(loc, 0);
-            }
+            program_font_texture_loc.set(0);
 
             gl::BindVertexArray(vertex_array_name);
 
@@ -283,6 +292,8 @@ impl TextRenderer {
 
         TextRenderer {
             program_name,
+            _program_font_texture_loc: program_font_texture_loc,
+            program_pos_from_wld_to_clp_space,
             texture_name,
             vertex_array_name,
             _vertex_buffer_name: vertex_buffer_name,
@@ -333,20 +344,8 @@ impl TextRenderer {
         unsafe {
             gl::BindVertexArray(self.vertex_array_name);
 
-            {
-                // Set pos_from_wld_to_clp_space.
-                let loc = gl::GetUniformLocation(
-                    self.program_name.as_u32(),
-                    gl_str!("pos_from_wld_to_clp_space"),
-                );
-                assert!(loc != -1, "failed to query uniform location");
-                gl::UniformMatrix4fv(
-                    loc,                                // location
-                    1,                                  // count
-                    gl::FALSE,                          // row major
-                    pos_from_wld_to_clp_space.as_ptr(), // data
-                );
-            }
+            self.program_pos_from_wld_to_clp_space
+                .set(glw::RowMatrixRef::from(pos_from_wld_to_clp_space.as_ref()));
 
             // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);

@@ -46,6 +46,64 @@ impl UniformLocation<[i32; 4]> {
     }
 }
 
+pub trait MatrixRef<'a, T: 'a> {
+    fn major_axis() -> MajorAxis;
+    fn as_ref(&self) -> &'a T;
+}
+
+pub struct RowMatrixRef<'a, T: 'a>(&'a T);
+
+impl<'a, T: 'a> RowMatrixRef<'a, T> {
+    pub fn from(value: &'a T) -> Self {
+        RowMatrixRef(value)
+    }
+}
+
+impl<'a, T: 'a> MatrixRef<'a, T> for RowMatrixRef<'a, T> {
+    fn major_axis() -> MajorAxis {
+        MajorAxis::Row
+    }
+
+    fn as_ref(&self) -> &'a T {
+        self.0
+    }
+}
+
+pub struct ColMatrixRef<'a, T: 'a>(&'a T);
+
+impl<'a, T: 'a> ColMatrixRef<'a, T> {
+    pub fn from(value: &'a T) -> Self {
+        ColMatrixRef(value)
+    }
+}
+
+impl<'a, T: 'a> MatrixRef<'a, T> for ColMatrixRef<'a, T> {
+    fn major_axis() -> MajorAxis {
+        MajorAxis::Column
+    }
+
+    fn as_ref(&self) -> &'a T {
+        self.0
+    }
+}
+
+#[repr(u8)]
+pub enum MajorAxis {
+    Row = gl::TRUE,
+    Column = gl::FALSE,
+}
+
+impl UniformLocation<[f32; 16]> {
+    pub unsafe fn set<'a, R: MatrixRef<'a, [f32; 16]>>(&self, value: R) {
+        gl::UniformMatrix4fv(
+            self.as_i32(),  // location
+            1,
+            R::major_axis() as u8,  // row major
+            value.as_ref().as_ptr(), // data
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
