@@ -13,7 +13,7 @@ mod viewport;
 
 // Can't auto sort bc macro import order important.
 #[macro_use]
-mod string;
+pub mod string;
 
 pub use self::buffer_name::*;
 pub use self::program::*;
