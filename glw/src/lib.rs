@@ -4,19 +4,16 @@ extern crate core;
 extern crate gl;
 
 mod name;
-#[cfg(test)]
-mod test;
-
-pub mod buffer_name;
-pub mod program;
-pub mod shader;
-pub mod texture;
-pub mod uniform_location;
-pub mod viewport;
+mod buffer_name;
+mod program;
+mod shader;
+mod texture;
+mod uniform_location;
+mod viewport;
 
 // Can't auto sort bc macro import order important.
 #[macro_use]
-pub mod string;
+mod string;
 
 pub use self::buffer_name::*;
 pub use self::program::*;

@@ -48,7 +48,6 @@ impl_vertex_buffer_name_array! {
 
 #[cfg(test)]
 mod tests {
-    use super::super::test;
     use super::*;
 
     #[test]
@@ -59,15 +58,5 @@ mod tests {
             size_of::<[Option<BufferName>; 32]>(),
             size_of::<[u32; 32]>()
         );
-    }
-
-    #[test]
-    fn create_array() {
-        let (_events_loop, _window) = test::build_display();
-        let [a, b] = <[Option<BufferName>; 2]>::new();
-        unsafe {
-            assert_eq!(a.unwrap().as_u32(), 1);
-            assert_eq!(b.unwrap().as_u32(), 2);
-        }
     }
 }
