@@ -1,4 +1,5 @@
 use cgmath::*;
+use cgmath_ext::*;
 use gl;
 use glw;
 use image;
@@ -95,7 +96,7 @@ struct Character {
 pub struct TextRenderer {
     program_name: glw::LinkedProgramName,
     _program_font_texture_loc: glw::UniformLocation<i32>,
-    program_pos_from_wld_to_clp_space: glw::UniformLocation<[f32; 16]>,
+    program_pos_from_wld_to_clp_space: glw::UniformLocation<[[f32; 4]; 4]>,
     texture_name: glw::TextureName,
     vertex_array_name: u32,
     _vertex_buffer_name: glw::BufferName,
@@ -130,7 +131,7 @@ impl TextRenderer {
         };
 
         let program_pos_from_wld_to_clp_space = unsafe {
-            glw::UniformLocation::<[f32; 16]>::new(
+            glw::UniformLocation::<[[f32; 4]; 4]>::new(
                 &program_name,
                 static_cstr!("pos_from_wld_to_clp_space"),
             ).unwrap()
@@ -345,7 +346,7 @@ impl TextRenderer {
             gl::BindVertexArray(self.vertex_array_name);
 
             self.program_pos_from_wld_to_clp_space
-                .set(glw::RowMatrixRef::from(pos_from_wld_to_clp_space.as_ref()));
+                .set(pos_from_wld_to_clp_space.as_matrix_ref());
 
             // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);

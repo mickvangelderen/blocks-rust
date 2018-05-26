@@ -19,6 +19,7 @@ extern crate image;
 
 pub mod block;
 pub mod camera;
+pub mod cgmath_ext;
 pub mod chunk;
 pub mod chunk_renderer;
 pub mod cube;

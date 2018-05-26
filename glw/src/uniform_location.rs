@@ -46,60 +46,97 @@ impl UniformLocation<[i32; 4]> {
     }
 }
 
-pub trait MatrixRef<'a, T: 'a> {
+pub trait MatrixRef<T> {
     fn major_axis() -> MajorAxis;
-    fn as_ref(&self) -> &'a T;
+    fn into_inner(self) -> T;
 }
 
-pub struct RowMatrixRef<'a, T: 'a>(&'a T);
+pub struct RowMatrixRef<T>(pub T);
 
-impl<'a, T: 'a> RowMatrixRef<'a, T> {
-    pub fn from(value: &'a T) -> Self {
-        RowMatrixRef(value)
-    }
-}
-
-impl<'a, T: 'a> MatrixRef<'a, T> for RowMatrixRef<'a, T> {
+impl<T> MatrixRef<T> for RowMatrixRef<T> {
     fn major_axis() -> MajorAxis {
         MajorAxis::Row
     }
 
-    fn as_ref(&self) -> &'a T {
+    fn into_inner(self) -> T {
         self.0
     }
 }
 
-pub struct ColMatrixRef<'a, T: 'a>(&'a T);
+pub struct ColMatrixRef<T>(pub T);
 
-impl<'a, T: 'a> ColMatrixRef<'a, T> {
-    pub fn from(value: &'a T) -> Self {
-        ColMatrixRef(value)
-    }
-}
-
-impl<'a, T: 'a> MatrixRef<'a, T> for ColMatrixRef<'a, T> {
+impl<T> MatrixRef<T> for ColMatrixRef<T> {
     fn major_axis() -> MajorAxis {
         MajorAxis::Column
     }
 
-    fn as_ref(&self) -> &'a T {
+    fn into_inner(self) -> T {
         self.0
     }
 }
 
-#[repr(u8)]
 pub enum MajorAxis {
-    Row = gl::TRUE,
-    Column = gl::FALSE,
+    Row,
+    Column,
+}
+
+impl MajorAxis {
+    fn should_transpose(&self) -> u8 {
+        match *self {
+            MajorAxis::Row => gl::FALSE,
+            MajorAxis::Column => gl::TRUE,
+        }
+    }
 }
 
 impl UniformLocation<[f32; 16]> {
-    pub unsafe fn set<'a, R: MatrixRef<'a, [f32; 16]>>(&self, value: R) {
+    /// Single 4x4 matrix.
+    pub unsafe fn set<'a, R: MatrixRef<&'a [f32; 16]>>(&self, value: R) {
+        let value = value.into_inner();
         gl::UniformMatrix4fv(
-            self.as_i32(),  // location
+            self.as_i32(),
             1,
-            R::major_axis() as u8,  // row major
-            value.as_ref().as_ptr(), // data
+            R::major_axis().should_transpose(),
+            value.as_ptr(),
+        );
+    }
+}
+
+impl UniformLocation<[[f32; 4]; 4]> {
+    /// Single 4x4 matrix.
+    pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 4]; 4]>>(&self, value: R) {
+        let value = value.into_inner();
+        gl::UniformMatrix4fv(
+            self.as_i32(),
+            1,
+            R::major_axis().should_transpose(),
+            value.as_ptr() as *const f32,
+        );
+    }
+}
+
+impl UniformLocation<&'static [[f32; 16]]> {
+    /// Array of 4x4 matrices.
+    pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 16]]>>(&self, value: R) {
+        let value = value.into_inner();
+        gl::UniformMatrix4fv(
+            self.as_i32(),
+            value.len() as i32,
+            R::major_axis().should_transpose(),
+            value.as_ptr() as *const f32,
+        );
+    }
+}
+
+impl UniformLocation<&'static [[f32; 4]; 4]> {
+    /// Array of 4x4 matrices.
+    pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 4]; 4]>>(&self, value: R) {
+        let value = value.into_inner();
+        gl::UniformMatrix4fv(
+            self.as_i32(),
+            value.len() as i32,
+            R::major_axis().should_transpose(),
+            value.as_ptr() as *const f32,
         );
     }
 }
