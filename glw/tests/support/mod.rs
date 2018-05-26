@@ -1,6 +1,7 @@
-use super::gl;
-use super::glutin;
-use super::glutin::*;
+use gl;
+use glutin;
+use glutin::*;
+use std::collections::HashMap;
 
 pub const GL_VERSION: glutin::GlRequest = glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0));
 pub const WINDOW_WIDTH: u32 = 1024;
@@ -26,4 +27,41 @@ pub fn build_display() -> (glutin::EventsLoop, glutin::GlWindow) {
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
     (events_loop, gl_window)
+}
+
+pub fn clear_errors() {
+    let mut error_to_count: HashMap<u32, usize> = HashMap::new();
+    for _ in 0..1000 {
+        let error = unsafe { gl::GetError() };
+        if error == gl::NO_ERROR {
+            return;
+        }
+        error_to_count
+            .entry(error)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
+    panic!("Unable to clear OpenGL errors {:?}", error_to_count);
+}
+
+// Work around tests being run in parallel by default.
+// https://github.com/rust-lang/rust/issues/43155
+
+use std::sync::Mutex;
+
+lazy_static! {
+    pub static ref SERIAL_TEST_MUTEX: Mutex<()> = Mutex::new(());
+}
+
+macro_rules! serial_test {
+    (fn $name:ident() $body:block) => {
+        #[test]
+        fn $name() {
+            let guard = $crate::support::SERIAL_TEST_MUTEX.lock().unwrap();
+            if let Err(e) = std::panic::catch_unwind(|| { $body }) {
+                drop(guard);
+                std::panic::resume_unwind(e);
+            }
+        }
+    }
 }
