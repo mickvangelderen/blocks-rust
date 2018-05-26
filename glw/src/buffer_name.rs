@@ -1,4 +1,4 @@
-use super::gl;
+use gl;
 
 use name::Name;
 

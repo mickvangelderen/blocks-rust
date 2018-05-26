@@ -1,5 +1,5 @@
-use super::cgmath;
-use super::glw;
+use cgmath;
+use glw;
 
 pub trait Matrix4Ext<T> {
     fn as_matrix_ref(&self) -> glw::RowMatrixRef<&[[T; 4]; 4]>;

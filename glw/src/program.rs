@@ -1,7 +1,6 @@
-extern crate gl;
-
-use super::name::Name;
-use super::shader::CompiledShaderName;
+use gl;
+use name::Name;
+use shader::CompiledShaderName;
 use std::marker::PhantomData;
 
 #[derive(Debug)]

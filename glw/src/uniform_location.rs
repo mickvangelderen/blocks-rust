@@ -1,6 +1,6 @@
-use super::gl;
-use super::program::LinkedProgramName;
 use core::marker::PhantomData;
+use gl;
+use program::LinkedProgramName;
 use std::ffi::CStr;
 use std::num::NonZeroU32;
 

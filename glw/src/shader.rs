@@ -1,6 +1,5 @@
-extern crate gl;
-
-use super::name::Name;
+use gl;
+use name::Name;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u32)]

@@ -1,4 +1,4 @@
-extern crate gl;
+use gl;
 
 #[derive(Debug)]
 pub struct Viewport {

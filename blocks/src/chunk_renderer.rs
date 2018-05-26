@@ -1,5 +1,3 @@
-extern crate glw;
-
 use block::Block;
 use cgmath::prelude::*;
 use cgmath::Matrix4;
@@ -8,6 +6,7 @@ use chunk;
 use chunk::Chunk;
 use cube;
 use gl;
+use glw;
 use image;
 
 use glw::BufferNameArray;
