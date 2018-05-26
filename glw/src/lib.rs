@@ -3,8 +3,8 @@
 extern crate core;
 extern crate gl;
 
-mod name;
 mod buffer_name;
+mod name;
 mod program;
 mod shader;
 mod texture;

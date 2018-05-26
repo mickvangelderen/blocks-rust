@@ -49,7 +49,8 @@ impl ChunkRenderer {
             names[0]
         };
 
-        let [vertex_buffer_name, element_buffer_name, block_buffer_name] = <[Option<glw::BufferName>; 3]>::new();
+        let [vertex_buffer_name, element_buffer_name, block_buffer_name] =
+            <[Option<glw::BufferName>; 3]>::new();
         let vertex_buffer_name = vertex_buffer_name.unwrap();
         let element_buffer_name = element_buffer_name.unwrap();
         let block_buffer_name = block_buffer_name.unwrap();
