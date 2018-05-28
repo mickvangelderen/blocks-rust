@@ -155,7 +155,7 @@ impl TextRenderer {
             glw::bind_vertex_array(&vertex_array_name);
 
             // Set up vertex buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name.as_u32());
+            glw::bind_buffer(glw::ARRAY_BUFFER, &vertex_buffer_name);
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -193,7 +193,7 @@ impl TextRenderer {
             );
 
             // Set up character buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, character_buffer_name.as_u32());
+            glw::bind_buffer(glw::ARRAY_BUFFER, &character_buffer_name);
 
             // We create the data dynamically from text. Not sure how to deal with allocation here.
             // gl::BufferData(
@@ -239,7 +239,7 @@ impl TextRenderer {
             }
 
             // Associate and set up element array.
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name.as_u32());
+            glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &element_buffer_name);
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&ELEMENT_DATA) as isize,
@@ -249,12 +249,7 @@ impl TextRenderer {
         }
 
         let texture_name: glw::TextureName = unsafe {
-            let name = {
-                let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
-                glw::gen_textures(&mut names);
-                let [name] = names;
-                name.unwrap()
-            };
+            let name = glw::TextureName::new().unwrap();
 
             glw::bind_texture(glw::TEXTURE_2D, &name);
 

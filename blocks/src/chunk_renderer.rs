@@ -1,7 +1,7 @@
 use block::Block;
-use cgmath::prelude::*;
 use cgmath::Matrix4;
 use cgmath::Vector3;
+use cgmath_ext::*;
 use chunk;
 use chunk::Chunk;
 use cube;
@@ -13,6 +13,7 @@ use glw::BufferNameArray;
 
 pub struct ChunkRenderer {
     program_name: glw::LinkedProgramName,
+    program_pos_from_wld_to_clp_space: glw::UniformLocation<[[f32; 4]; 4]>,
     texture_atlas_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
     _vertex_buffer_name: glw::BufferName,
@@ -42,9 +43,14 @@ impl ChunkRenderer {
             ])
             .unwrap();
 
-        let vertex_array_name = unsafe {
-            glw::VertexArrayName::new().unwrap()
+        let program_pos_from_wld_to_clp_space = unsafe {
+            glw::UniformLocation::<[[f32; 4]; 4]>::new(
+                &program_name,
+                static_cstr!("pos_from_wld_to_clp_space"),
+            ).unwrap()
         };
+
+        let vertex_array_name = unsafe { glw::VertexArrayName::new().unwrap() };
 
         let [vertex_buffer_name, element_buffer_name, block_buffer_name] =
             unsafe { <[Option<glw::BufferName>; 3]>::new() };
@@ -54,9 +60,10 @@ impl ChunkRenderer {
 
         unsafe {
             glw::use_program(&program_name);
-            let texture_atlas_loc: i32 =
-                gl::GetUniformLocation(program_name.as_u32(), gl_str!("texture_atlas"));
-            gl::Uniform1i(texture_atlas_loc, 0);
+            let texture_atlas_loc =
+                glw::UniformLocation::<i32>::new(&program_name, static_cstr!("texture_atlas"))
+                    .unwrap();
+            texture_atlas_loc.set(0);
         }
 
         unsafe {
@@ -101,7 +108,7 @@ impl ChunkRenderer {
             );
 
             // Set up block type buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, block_buffer_name.as_u32());
+            glw::bind_buffer(glw::ARRAY_BUFFER, &block_buffer_name);
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -131,7 +138,7 @@ impl ChunkRenderer {
             );
 
             // Associate and set up element array.
-            gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, element_buffer_name.as_u32());
+            glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &element_buffer_name);
             gl::BufferData(
                 gl::ELEMENT_ARRAY_BUFFER,
                 ::std::mem::size_of_val(&cube::ELEMENT_DATA) as isize,
@@ -218,6 +225,7 @@ impl ChunkRenderer {
 
         ChunkRenderer {
             program_name,
+            program_pos_from_wld_to_clp_space,
             texture_atlas_name,
             vertex_array_name,
             _vertex_buffer_name: vertex_buffer_name,
@@ -229,7 +237,7 @@ impl ChunkRenderer {
     pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, chunk: &Chunk) {
         unsafe {
             // Update block type buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.block_buffer_name.as_u32());
+            glw::bind_buffer(glw::ARRAY_BUFFER, &self.block_buffer_name);
             gl::BufferSubData(
                 gl::ARRAY_BUFFER,                                                     // target
                 0,                                                                    // offset
@@ -284,20 +292,8 @@ impl ChunkRenderer {
         // }
 
         unsafe {
-            {
-                // Set pos_from_wld_to_clp_space.
-                let loc = gl::GetUniformLocation(
-                    self.program_name.as_u32(),
-                    gl_str!("pos_from_wld_to_clp_space"),
-                );
-                assert!(loc != -1, "failed to query uniform location");
-                gl::UniformMatrix4fv(
-                    loc,                                // location
-                    1,                                  // count
-                    gl::FALSE,                          // row major
-                    pos_from_wld_to_clp_space.as_ptr(), // data
-                );
-            }
+            self.program_pos_from_wld_to_clp_space
+                .set(pos_from_wld_to_clp_space.as_matrix_ref());
 
             // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);
