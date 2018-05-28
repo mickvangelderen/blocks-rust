@@ -11,6 +11,17 @@ impl Name {
 
     #[inline]
     pub fn get(&self) -> u32 {
-        return self.0.get();
+        self.0.get()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn size_of_option_self_equals_size_of_u32() {
+        assert_eq!(
+            ::std::mem::size_of::<[Option<super::Name>; 32]>(),
+            ::std::mem::size_of::<[u32; 32]>(),
+        );
     }
 }
