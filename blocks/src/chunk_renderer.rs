@@ -14,7 +14,7 @@ use glw::BufferNameArray;
 pub struct ChunkRenderer {
     program_name: glw::LinkedProgramName,
     texture_atlas_name: glw::TextureName,
-    vertex_array_name: u32,
+    vertex_array_name: glw::VertexArrayName,
     _vertex_buffer_name: glw::BufferName,
     _element_buffer_name: glw::BufferName,
     block_buffer_name: glw::BufferName,
@@ -43,14 +43,11 @@ impl ChunkRenderer {
             .unwrap();
 
         let vertex_array_name = unsafe {
-            let mut names: [u32; 1] = ::std::mem::uninitialized();
-            gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr());
-            assert!(names[0] != 0, "Failed to create vertex array.");
-            names[0]
+            glw::VertexArrayName::new().unwrap()
         };
 
         let [vertex_buffer_name, element_buffer_name, block_buffer_name] =
-            <[Option<glw::BufferName>; 3]>::new();
+            unsafe { <[Option<glw::BufferName>; 3]>::new() };
         let vertex_buffer_name = vertex_buffer_name.unwrap();
         let element_buffer_name = element_buffer_name.unwrap();
         let block_buffer_name = block_buffer_name.unwrap();
@@ -63,10 +60,10 @@ impl ChunkRenderer {
         }
 
         unsafe {
-            gl::BindVertexArray(vertex_array_name);
+            glw::bind_vertex_array(&vertex_array_name);
 
             // Set up vertex buffer.
-            gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name.as_u32());
+            glw::bind_buffer(glw::ARRAY_BUFFER, &vertex_buffer_name);
 
             gl::BufferData(
                 gl::ARRAY_BUFFER,
@@ -143,36 +140,38 @@ impl ChunkRenderer {
             );
         }
 
-        let texture_atlas_name: glw::TextureName = {
-            let name = unsafe {
-                let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
-                glw::gen_textures(&mut names);
-
-                // Move all values out of the array and forget about the array.
-                let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
-                ::std::mem::forget(names);
-
-                name.unwrap()
-            };
+        let texture_atlas_name = unsafe {
+            let name = glw::TextureName::new().unwrap();
 
             glw::bind_texture(glw::TEXTURE_2D_ARRAY, &name);
-            unsafe {
-                gl::TexStorage3D(
-                    gl::TEXTURE_2D_ARRAY, // target
-                    6,                    // levels
-                    gl::RGBA8,            // internal format
-                    32,                   // width
-                    32,                   // height
-                    2,                    // depth (layer count)
-                );
-            }
 
-            glw::tex_parameter_min_filter(glw::TEXTURE_2D_ARRAY, glw::LINEAR_MIPMAP_LINEAR);
-            glw::tex_parameter_mag_filter(glw::TEXTURE_2D_ARRAY, glw::NEAREST);
-            glw::tex_parameter_wrap_s(glw::TEXTURE_2D_ARRAY, glw::CLAMP_TO_EDGE);
-            glw::tex_parameter_wrap_t(glw::TEXTURE_2D_ARRAY, glw::CLAMP_TO_EDGE);
+            gl::TexStorage3D(
+                gl::TEXTURE_2D_ARRAY, // target
+                6,                    // levels
+                gl::RGBA8,            // internal format
+                32,                   // width
+                32,                   // height
+                2,                    // depth (layer count)
+            );
 
-            unsafe {
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_MIN_FILTER,
+                glw::LINEAR_MIPMAP_LINEAR,
+            );
+            glw::tex_parameter_i(glw::TEXTURE_2D_ARRAY, glw::TEXTURE_MAG_FILTER, glw::NEAREST);
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_WRAP_S,
+                glw::CLAMP_TO_EDGE,
+            );
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_WRAP_T,
+                glw::CLAMP_TO_EDGE,
+            );
+
+            {
                 let img = image::open("../assets/stone_xyz.png").unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
@@ -192,7 +191,7 @@ impl ChunkRenderer {
                 );
             }
 
-            unsafe {
+            {
                 let img = image::open("../assets/dirt_xyz.png").unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
@@ -237,12 +236,10 @@ impl ChunkRenderer {
                 ::std::mem::size_of::<[Block; chunk::CHUNK_TOTAL_BLOCKS]>() as isize, // size
                 chunk.blocks.as_ptr() as *const ::std::os::raw::c_void,               // data
             );
-        }
 
-        glw::use_program(&self.program_name);
+            glw::use_program(&self.program_name);
 
-        unsafe {
-            gl::BindVertexArray(self.vertex_array_name);
+            glw::bind_vertex_array(&self.vertex_array_name);
         }
 
         // for (position, block) in chunk.blocks() {

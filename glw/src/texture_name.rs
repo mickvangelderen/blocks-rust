@@ -2,12 +2,12 @@ use functions;
 use gl;
 use name::Name;
 
-pub struct BufferName(Name);
+#[derive(Debug)]
+pub struct TextureName(Name);
 
-impl BufferName {
-    #[inline]
+impl TextureName {
     pub unsafe fn new() -> Option<Self> {
-        let [name]: [Option<BufferName>; 1] = BufferNameArray::new();
+        let [name] = <[Option<Self>; 1]>::new();
         name
     }
 
@@ -17,27 +17,27 @@ impl BufferName {
     }
 }
 
-impl Drop for BufferName {
+impl Drop for TextureName {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteBuffers(1, &self.0 as *const Name as *const u32);
+            gl::DeleteTextures(1, &self.as_u32());
         }
     }
 }
 
-pub trait BufferNameArray {
+pub trait TextureNameArray {
     unsafe fn new() -> Self;
 }
 
-macro_rules! impl_vertex_buffer_name_array {
+macro_rules! impl_texture_name_array {
     ($($N:expr)+) => {
         $(
-            impl BufferNameArray for [Option<BufferName>; $N] {
+            impl TextureNameArray for [Option<TextureName>; $N] {
                 #[inline]
                 unsafe fn new() -> Self {
-                    let mut names: [Option<BufferName>; $N] = ::std::mem::uninitialized();
-                    functions::gen_buffers(&mut names);
+                    let mut names: [Option<TextureName>; $N] = ::std::mem::uninitialized();
+                    functions::gen_textures(&mut names);
                     names
                 }
             }
@@ -45,7 +45,7 @@ macro_rules! impl_vertex_buffer_name_array {
     }
 }
 
-impl_vertex_buffer_name_array! {
+impl_texture_name_array! {
     0  1  2  3  4  5  6  7  8  9
     10 11 12 13 14 15 16 17 18 19
     20 21 22 23 24 25 26 27 28 29
@@ -59,9 +59,9 @@ mod tests {
     #[test]
     fn size_of_option_self_equals_size_of_u32() {
         use std::mem::size_of;
-        assert_eq!(size_of::<Option<BufferName>>(), size_of::<u32>());
+        assert_eq!(size_of::<Option<TextureName>>(), size_of::<u32>());
         assert_eq!(
-            size_of::<[Option<BufferName>; 32]>(),
+            size_of::<[Option<TextureName>; 32]>(),
             size_of::<[u32; 32]>()
         );
     }

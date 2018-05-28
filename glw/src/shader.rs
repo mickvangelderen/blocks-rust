@@ -1,16 +1,6 @@
 use gl;
 use name::Name;
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[repr(u32)]
-pub enum ShaderKind {
-    Compute = gl::COMPUTE_SHADER,
-    Fragment = gl::FRAGMENT_SHADER,
-    Geometry = gl::GEOMETRY_SHADER,
-    Vertex = gl::VERTEX_SHADER,
-    TesselationControl = gl::TESS_CONTROL_SHADER,
-    TesselationEvaluation = gl::TESS_EVALUATION_SHADER,
-}
+use shader_kind::ShaderKind;
 
 #[derive(Debug)]
 pub struct ShaderName(Name);

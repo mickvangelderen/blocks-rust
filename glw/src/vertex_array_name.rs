@@ -1,3 +1,4 @@
+use functions;
 use gl;
 use name::Name;
 
@@ -23,8 +24,30 @@ impl Drop for VertexArrayName {
     }
 }
 
-pub unsafe fn bind_vertex_array(name: &VertexArrayName) {
-    gl::BindVertexArray(name.as_u32());
+pub trait VertexArrayNameArray {
+    unsafe fn new() -> Self;
+}
+
+macro_rules! impl_vertex_array_name_array {
+    ($($N:expr)+) => {
+        $(
+            impl VertexArrayNameArray for [Option<VertexArrayName>; $N] {
+                #[inline]
+                unsafe fn new() -> Self {
+                    let mut names: [Option<VertexArrayName>; $N] = ::std::mem::uninitialized();
+                    functions::gen_vertex_arrays(&mut names);
+                    names
+                }
+            }
+        )+
+    }
+}
+
+impl_vertex_array_name_array! {
+    0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
 }
 
 #[cfg(test)]

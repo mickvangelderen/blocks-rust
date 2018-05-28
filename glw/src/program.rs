@@ -1,7 +1,6 @@
 use gl;
 use name::Name;
 use shader::CompiledShaderName;
-use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct ProgramName(Name);
@@ -27,7 +26,7 @@ impl ProgramName {
         }
 
         let status = unsafe {
-            let mut status = ::std::mem::uninitialized();
+            let mut status: i32 = ::std::mem::uninitialized();
             gl::GetProgramiv(self.as_u32(), gl::LINK_STATUS, &mut status);
             status
         };
@@ -78,30 +77,26 @@ impl LinkedProgramName {
     }
 }
 
-#[derive(Debug)]
-pub struct ProgramSlot;
+// use std::marker::PhantomData;
 
-impl ProgramSlot {
-    pub fn bind<'s, 'p>(&'s mut self, program: &'p LinkedProgramName) -> BoundProgramName {
-        unsafe {
-            gl::UseProgram(program.as_u32());
-        }
-        BoundProgramName {
-            slot: PhantomData,
-            program: PhantomData,
-        }
-    }
-}
+// #[derive(Debug)]
+// pub struct ProgramSlot;
 
-#[derive(Debug)]
-#[must_use = "The program is conceptually only bound for the lifetime of this object."]
-pub struct BoundProgramName<'s, 'p> {
-    slot: PhantomData<&'s mut ProgramSlot>,
-    program: PhantomData<&'p LinkedProgramName>,
-}
+// impl ProgramSlot {
+//     pub fn bind<'s, 'p>(&'s mut self, program: &'p LinkedProgramName) -> BoundProgramName {
+//         unsafe {
+//             use_program(program);
+//         }
+//         BoundProgramName {
+//             slot: PhantomData,
+//             program: PhantomData,
+//         }
+//     }
+// }
 
-pub fn use_program(program: &LinkedProgramName) {
-    unsafe {
-        gl::UseProgram(program.as_u32());
-    }
-}
+// #[derive(Debug)]
+// #[must_use = "The program is conceptually only bound for the lifetime of this object."]
+// pub struct BoundProgramName<'s, 'p> {
+//     slot: PhantomData<&'s mut ProgramSlot>,
+//     program: PhantomData<&'p LinkedProgramName>,
+// }

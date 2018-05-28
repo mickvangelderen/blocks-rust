@@ -58,10 +58,10 @@ macro_rules! serial_test {
         #[test]
         fn $name() {
             let guard = $crate::support::SERIAL_TEST_MUTEX.lock().unwrap();
-            if let Err(e) = std::panic::catch_unwind(|| { $body }) {
+            if let Err(e) = std::panic::catch_unwind(|| $body) {
                 drop(guard);
                 std::panic::resume_unwind(e);
             }
         }
-    }
+    };
 }

@@ -98,7 +98,7 @@ pub struct TextRenderer {
     _program_font_texture_loc: glw::UniformLocation<i32>,
     program_pos_from_wld_to_clp_space: glw::UniformLocation<[[f32; 4]; 4]>,
     texture_name: glw::TextureName,
-    vertex_array_name: u32,
+    vertex_array_name: glw::VertexArrayName,
     _vertex_buffer_name: glw::BufferName,
     _element_buffer_name: glw::BufferName,
     character_buffer_name: glw::BufferName,
@@ -137,15 +137,12 @@ impl TextRenderer {
             ).unwrap()
         };
 
-        let vertex_array_name = unsafe {
-            let mut names: [u32; 1] = ::std::mem::uninitialized();
-            gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr());
-            assert!(names[0] != 0, "Failed to create vertex array.");
-            names[0]
-        };
+        let vertex_array_name =
+            unsafe { glw::VertexArrayName::new().expect("Failed to create vertex array.") };
 
         let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
-            <[Option<glw::BufferName>; 3]>::new();
+            unsafe { <[Option<glw::BufferName>; 3]>::new() };
+
         let vertex_buffer_name = vertex_buffer_name.unwrap();
         let element_buffer_name = element_buffer_name.unwrap();
         let character_buffer_name = character_buffer_name.unwrap();
@@ -155,7 +152,7 @@ impl TextRenderer {
 
             program_font_texture_loc.set(0);
 
-            gl::BindVertexArray(vertex_array_name);
+            glw::bind_vertex_array(&vertex_array_name);
 
             // Set up vertex buffer.
             gl::BindBuffer(gl::ARRAY_BUFFER, vertex_buffer_name.as_u32());
@@ -251,26 +248,38 @@ impl TextRenderer {
             );
         }
 
-        let texture_name: glw::TextureName = {
-            let name = unsafe {
+        let texture_name: glw::TextureName = unsafe {
+            let name = {
                 let mut names: [Option<glw::TextureName>; 1] = ::std::mem::uninitialized();
                 glw::gen_textures(&mut names);
-
-                // Move all values out of the array and forget about the array.
-                let name = ::std::mem::replace(&mut names[0], ::std::mem::uninitialized());
-                ::std::mem::forget(names);
-
+                let [name] = names;
                 name.unwrap()
             };
 
             glw::bind_texture(glw::TEXTURE_2D, &name);
 
-            glw::tex_parameter_min_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-            glw::tex_parameter_mag_filter(glw::TEXTURE_2D, glw::LINEAR_MIPMAP_LINEAR);
-            glw::tex_parameter_wrap_s(glw::TEXTURE_2D, glw::CLAMP_TO_EDGE);
-            glw::tex_parameter_wrap_t(glw::TEXTURE_2D, glw::CLAMP_TO_EDGE);
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_MIN_FILTER,
+                glw::LINEAR_MIPMAP_LINEAR,
+            );
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_MAG_FILTER,
+                glw::LINEAR_MIPMAP_LINEAR,
+            );
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_WRAP_S,
+                glw::CLAMP_TO_EDGE,
+            );
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_WRAP_T,
+                glw::CLAMP_TO_EDGE,
+            );
 
-            unsafe {
+            {
                 let img = image::open("../assets/font-padded-sdf.png").unwrap();
                 let img = img.flipv().to_rgba();
                 gl::TexImage2D(
@@ -330,10 +339,11 @@ impl TextRenderer {
             character_data
         };
 
-        glw::use_program(&self.program_name);
-
         unsafe {
-            gl::BindBuffer(gl::ARRAY_BUFFER, self.character_buffer_name.as_u32());
+            glw::use_program(&self.program_name);
+
+            glw::bind_buffer(glw::ARRAY_BUFFER, &self.character_buffer_name);
+
             gl::BufferData(
                 gl::ARRAY_BUFFER,                                                     // target
                 (::std::mem::size_of::<Character>() * character_data.len()) as isize, // size
@@ -343,7 +353,7 @@ impl TextRenderer {
         }
 
         unsafe {
-            gl::BindVertexArray(self.vertex_array_name);
+            glw::bind_vertex_array(&self.vertex_array_name);
 
             self.program_pos_from_wld_to_clp_space
                 .set(pos_from_wld_to_clp_space.as_matrix_ref());
