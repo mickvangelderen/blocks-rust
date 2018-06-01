@@ -40,7 +40,7 @@ static VERTEX_DATA: [Vertex; 4] = [
     Vertex {
         ver_pos: Vector3 {
             x: -VER_POS_OFF,
-            y: -VER_POS_OFF,
+            y: VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
@@ -51,7 +51,7 @@ static VERTEX_DATA: [Vertex; 4] = [
     Vertex {
         ver_pos: Vector3 {
             x: VER_POS_OFF,
-            y: -VER_POS_OFF,
+            y: VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
@@ -62,7 +62,7 @@ static VERTEX_DATA: [Vertex; 4] = [
     Vertex {
         ver_pos: Vector3 {
             x: -VER_POS_OFF,
-            y: VER_POS_OFF,
+            y: -VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
@@ -73,7 +73,7 @@ static VERTEX_DATA: [Vertex; 4] = [
     Vertex {
         ver_pos: Vector3 {
             x: VER_POS_OFF,
-            y: VER_POS_OFF,
+            y: -VER_POS_OFF,
             z: 0.0,
         },
         tex_pos: Vector2 {
@@ -91,6 +91,34 @@ static ELEMENT_DATA: [Triangle; 2] = [Triangle(2, 0, 1), Triangle(1, 3, 2)];
 struct Character {
     value: u32,
     offset: Vector2<f32>,
+}
+
+#[derive(Debug)]
+pub struct Rect {
+    x0: f32,
+    y0: f32,
+    x1: f32,
+    y1: f32,
+}
+
+impl Rect {
+    /// x1, y1 are exclusive.
+    pub fn from_coords(x0: f32, y0: f32, x1: f32, y1: f32) -> Self {
+        assert!(x1 > x0);
+        assert!(y1 > y0);
+        Rect { x0, y0, x1, y1 }
+    }
+
+    pub fn from_dims(x0: f32, y0: f32, width: f32, height: f32) -> Self {
+        assert!(width > 0.0);
+        assert!(height > 0.0);
+        Rect {
+            x0,
+            y0,
+            x1: x0 + width,
+            y1: y0 + height,
+        }
+    }
 }
 
 pub struct TextRenderer {
@@ -307,27 +335,47 @@ impl TextRenderer {
         }
     }
 
-    pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, text: &str) {
+    pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, text: &str, bounds: &Rect) {
         // Construct character buffer from text.
         let character_data = {
             let bytes = text.as_bytes();
             let mut character_data: Vec<Character> = Vec::with_capacity(bytes.len());
-            let mut offset = Vector2 { x: 0.0, y: 0.0 };
+            let mut offset = Vector2 {
+                x: bounds.x0,
+                y: bounds.y0,
+            };
+            const SCALE: f32 = 18.0;
+
+            fn inc_x(offset: &mut Vector2<f32>, bounds: &Rect) {
+                offset.x += SCALE;
+                // Hard wrap.
+                if offset.x >= bounds.x1 {
+                    inc_y(offset, bounds);
+                }
+            }
+
+            fn inc_y(offset: &mut Vector2<f32>, bounds: &Rect) {
+                offset.x = bounds.x0;
+                offset.y += SCALE;
+            }
+
             for &byte in bytes {
                 match byte {
                     b' ' => {
-                        offset.x += 1.0;
+                        inc_x(&mut offset, bounds);
                     }
                     b'\n' | b'\r' => {
-                        offset.x = 0.0;
-                        offset.y += -1.0;
+                        inc_y(&mut offset, bounds);
                     }
                     _ => {
-                        character_data.push(Character {
-                            value: byte as u32,
-                            offset: offset,
-                        });
-                        offset.x += 1.0;
+                        // y might not be in bounds, check before adding.
+                        if offset.y < bounds.y1 {
+                            character_data.push(Character {
+                                value: byte as u32,
+                                offset: offset,
+                            });
+                        }
+                        inc_x(&mut offset, bounds);
                     }
                 }
             }

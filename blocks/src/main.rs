@@ -327,6 +327,7 @@ fn main() {
             // gl::Enable(gl::MULTISAMPLE);
         }
 
+        // Render scene.
         let pos_from_wld_to_cam_space = camera.pos_from_wld_to_cam_space();
 
         let pos_from_cam_to_clp_space = Matrix4::from(PerspectiveFov {
@@ -340,7 +341,46 @@ fn main() {
 
         chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
 
-        text_renderer.render(&pos_from_wld_to_clp_space, &user_input);
+        // Render ui
+        unsafe {
+            gl::Disable(gl::DEPTH_TEST);
+        }
+
+        // obj
+        let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
+            left: 0.0,
+            right: viewport.width() as f32,
+            bottom: viewport.height() as f32,
+            top: 0.0,
+            near: -5.0,
+            far: 5.0,
+        });
+
+        {
+            let s = format!("Blocks, {:.1} FPS, {:.1} UPS", fps, ups);
+
+            text_renderer.render(
+                &pos_from_wld_to_clp_space,
+                &s,
+                &text_renderer::Rect::from_dims(
+                    viewport.width() as f32 * 0.1,
+                    viewport.height() as f32 * 0.1,
+                    viewport.width() as f32 * 0.8,
+                    viewport.height() as f32 * 0.8,
+                ),
+            );
+        }
+
+        text_renderer.render(
+            &pos_from_wld_to_clp_space,
+            &user_input,
+            &text_renderer::Rect::from_dims(
+                viewport.width() as f32 * 0.1,
+                viewport.height() as f32 * 0.2,
+                viewport.width() as f32 * 0.8,
+                viewport.height() as f32 * 0.7,
+            ),
+        );
 
         gl_window.swap_buffers().unwrap();
 
