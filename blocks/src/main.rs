@@ -357,16 +357,16 @@ fn main() {
         });
 
         {
-            let s = format!("Blocks, {:.1} FPS, {:.1} UPS", fps, ups);
+            let s = format!("Blocks {}, {:.0} FPS, {:.0} UPS", env!("GIT_HASH"), fps, ups);
 
             text_renderer.render(
                 &pos_from_wld_to_clp_space,
                 &s,
                 &text_renderer::Rect::from_dims(
-                    viewport.width() as f32 * 0.1,
-                    viewport.height() as f32 * 0.1,
-                    viewport.width() as f32 * 0.8,
-                    viewport.height() as f32 * 0.8,
+                    18.0,
+                    18.0,
+                    viewport.width() as f32 - 18.0,
+                    viewport.height() as f32 - 18.0,
                 ),
             );
         }
