@@ -17,6 +17,7 @@ extern crate glutin;
 extern crate glw;
 extern crate image;
 
+pub mod assets;
 pub mod block;
 pub mod camera;
 pub mod cgmath_ext;

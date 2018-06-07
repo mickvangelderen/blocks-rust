@@ -1,3 +1,4 @@
+use assets;
 use block::Block;
 use cgmath::Matrix4;
 use cgmath::Vector3;
@@ -179,7 +180,7 @@ impl ChunkRenderer {
             );
 
             {
-                let img = image::open("../assets/stone_xyz.png").unwrap();
+                let img = image::open(assets::get_asset_path("stone_xyz.png")).unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);
@@ -199,7 +200,7 @@ impl ChunkRenderer {
             }
 
             {
-                let img = image::open("../assets/dirt_xyz.png").unwrap();
+                let img = image::open(assets::get_asset_path("dirt_xyz.png")).unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);

@@ -1,3 +1,4 @@
+use assets;
 use cgmath::*;
 use cgmath_ext::*;
 use gl;
@@ -303,7 +304,7 @@ impl TextRenderer {
             );
 
             {
-                let img = image::open("../assets/font-padded-sdf.png").unwrap();
+                let img = image::open(assets::get_asset_path("font-padded-sdf.png")).unwrap();
                 let img = img.flipv().to_rgba();
                 gl::TexImage2D(
                     gl::TEXTURE_2D,                                // target
