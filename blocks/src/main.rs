@@ -63,7 +63,7 @@ fn main() {
     let mut events_loop = glutin::EventsLoop::new();
     let gl_window = glutin::GlWindow::new(
         glutin::WindowBuilder::new()
-            .with_title("Hello, world!")
+            .with_title(format!("{} {}", env!("CARGO_PKG_NAME"), env!("GIT_HASH")))
             .with_dimensions(viewport.width() as u32, viewport.height() as u32),
         glutin::ContextBuilder::new()
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
@@ -358,7 +358,13 @@ fn main() {
         });
 
         {
-            let s = format!("Blocks {}, {:.0} FPS, {:.0} UPS", env!("GIT_HASH"), fps, ups);
+            let s = format!(
+                "{} {}, {:.0} FPS, {:.0} UPS",
+                env!("CARGO_PKG_NAME"),
+                env!("GIT_HASH"),
+                fps,
+                ups
+            );
 
             text_renderer.render(
                 &pos_from_wld_to_clp_space,
@@ -386,8 +392,6 @@ fn main() {
         gl_window.swap_buffers().unwrap();
 
         fps = fps_counter.update();
-
-        gl_window.set_title(&format!("blocks {:.1} FPS {:.1} UPS", fps, ups));
 
         next_render = time::Instant::now()
             + time::Duration::from_nanos((1000_000_000f64 / DESIRED_FPS) as u64);
