@@ -4,7 +4,7 @@ use image::GenericImage;
 use image::Pixel;
 
 fn main() {
-    let img = image::open("../assets/font.png").unwrap();
+    let img = image::open("assets/font.png").unwrap();
 
     let mut img = img.to_rgba();
 
@@ -20,26 +20,26 @@ fn main() {
         }
     }
 
-    img_pad.save("../assets/font-padded.png").unwrap();
+    img_pad.save("assets/font-padded.png").unwrap();
 
     // Calculate sdf
     let mut sdf = image::RgbaImage::new(img_pad.width(), img_pad.height());
 
-    const R: i32 = 4;
-    let d_sq_max: i32 = R * R + R * R;
-    let d_max: f32 = (d_sq_max as f32).sqrt();
+    const R: i32 = 5;
+    const R_SQ: i32 = R*R;
 
     for (x, y, pixel) in sdf.enumerate_pixels_mut() {
-        let outside: bool = pixel[3] < 128;
+        let outside: bool =
+            unsafe { img_pad.unsafe_get_pixel(x, y)[3] < 128 };
         let x = x as i32;
         let y = y as i32;
 
-        let mut closest_d_sq: i32 = d_sq_max;
+        let mut closest_d_sq: i32 = R_SQ;
 
-        // x high, inclusive maximum value for x.
-        let x_h = img_pad.width() as i32 - 1;
-        // y high, inclusive maximum value for y.
-        let y_h = img_pad.height() as i32 - 1;
+        // x high, exclusive maximum value for x.
+        let x_h = img_pad.width() as i32;
+        // y high, exclusive maximum value for y.
+        let y_h = img_pad.height() as i32;
 
         // Define bounding box of circle lying within the source image.
         let dx_l: i32 = if x >= R { -R } else { -x };
@@ -47,15 +47,16 @@ fn main() {
         let dy_l: i32 = if y >= R { -R } else { -y };
         let dy_h: i32 = if y + R <= y_h { R } else { y_h - y };
 
-        for dy in dy_l..=dy_h {
-            for dx in dx_l..=dx_h {
+        for dy in dy_l..dy_h {
+            for dx in dx_l..dx_h {
                 let d_sq = dx * dx + dy * dy;
 
-                if d_sq > d_sq_max {
+                if d_sq > R_SQ {
+                    // Pixel does not lie within search radius.
                     continue;
                 }
 
-                let other_outside =
+                let other_outside: bool =
                     unsafe { img_pad.unsafe_get_pixel((x + dx) as u32, (y + dy) as u32)[3] < 128 };
 
                 if outside != other_outside {
@@ -72,13 +73,20 @@ fn main() {
         }
 
         let d: f32 = (closest_d_sq as f32).sqrt();
+        assert!(d >= 1.0);
+        assert!(d <= R as f32);
         let a: f32 = if outside {
-            // map from (d_max, 0) to (0, 128)
-            map_lin(d, d_max, 0.0, 0.0, 128.0)
+            let a = map_lin(d, R as f32, 0.0, 0.0, 127.0);
+            assert!(a >= 0.0);
+            assert!(a <= 127.0);
+            a
         } else {
-            // map from (0, d_max) to (128, 256)
-            map_lin(d, 0.0, d_max, 128.0, 256.0)
+            let a = map_lin(d, 0.0, R as f32, 128.0, 255.0);
+            assert!(a >= 128.0);
+            assert!(a <= 255.0);
+            a
         };
+
 
         *pixel = image::Rgba::from_channels(
             (x % 256) as u8,
@@ -88,7 +96,7 @@ fn main() {
         );
     }
 
-    sdf.save("../assets/font-padded-sdf.png").unwrap();
+    sdf.save("assets/font-padded-sdf.png").unwrap();
 }
 
 pub fn calculate_and_print_histogram<
