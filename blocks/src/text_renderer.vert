@@ -1,5 +1,6 @@
 #version 400 core
 
+uniform float font_size;
 uniform mat4 pos_from_wld_to_clp_space;
 
 in vec3 vs_ver_pos;
@@ -10,11 +11,9 @@ in vec2 vs_char_offset;
 out vec2 fs_tex_pos;
 
 void main() {
-  float scale = 18.0f;
-
   mat4 pos_from_obj_to_wld_space = mat4(
-    scale, 0.0, 0.0, 0.0,
-    0.0, scale, 0.0, 0.0,
+    font_size, 0.0, 0.0, 0.0,
+    0.0, font_size, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
     vs_char_offset.x, vs_char_offset.y, 0.0, 1.0
   );

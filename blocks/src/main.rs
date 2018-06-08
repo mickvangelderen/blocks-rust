@@ -128,6 +128,7 @@ fn main() {
     };
 
     let mut user_input = String::new();
+    let mut font_size = 20.0;
 
     while !should_stop {
         let now = time::Instant::now();
@@ -177,6 +178,22 @@ fn main() {
                                     Some(VirtualKeyCode::D) => input_right = input.state,
                                     Some(VirtualKeyCode::Q) => input_up = input.state,
                                     Some(VirtualKeyCode::Z) => input_down = input.state,
+                                    Some(VirtualKeyCode::Add) => {
+                                        if input.state == ElementState::Pressed && has_focus {
+                                            font_size += 1.0;
+                                            if font_size > 200.0 {
+                                                font_size = 200.0;
+                                            }
+                                        }
+                                    },
+                                    Some(VirtualKeyCode::Subtract) => {
+                                        if input.state == ElementState::Pressed && has_focus {
+                                            font_size -= 1.0;
+                                            if font_size < 1.0 {
+                                                font_size = 1.0;
+                                            }
+                                        }
+                                    },
                                     _ => (),
                                 }
                             }
@@ -369,11 +386,12 @@ fn main() {
             text_renderer.render(
                 &pos_from_wld_to_clp_space,
                 &s,
+                font_size,
                 &text_renderer::Rect::from_dims(
-                    18.0,
-                    18.0,
-                    viewport.width() as f32 - 18.0,
-                    viewport.height() as f32 - 18.0,
+                    font_size,
+                    font_size,
+                    viewport.width() as f32 - font_size,
+                    viewport.height() as f32 - font_size,
                 ),
             );
         }
@@ -381,11 +399,12 @@ fn main() {
         text_renderer.render(
             &pos_from_wld_to_clp_space,
             &user_input,
+            font_size,
             &text_renderer::Rect::from_dims(
-                viewport.width() as f32 * 0.1,
-                viewport.height() as f32 * 0.2,
-                viewport.width() as f32 * 0.8,
-                viewport.height() as f32 * 0.7,
+                font_size,
+                font_size*3.0,
+                viewport.width() as f32 - font_size,
+                viewport.height() as f32 - font_size,
             ),
         );
 

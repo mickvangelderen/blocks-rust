@@ -125,7 +125,8 @@ impl Rect {
 pub struct TextRenderer {
     program_name: glw::LinkedProgramName,
     _program_font_texture_loc: glw::UniformLocation<i32>,
-    program_pos_from_wld_to_clp_space: glw::UniformLocation<[[f32; 4]; 4]>,
+    program_pos_from_wld_to_clp_space_loc: glw::UniformLocation<[[f32; 4]; 4]>,
+    program_font_size_loc: glw::UniformLocation<f32>,
     texture_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
     _vertex_buffer_name: glw::BufferName,
@@ -155,15 +156,25 @@ impl TextRenderer {
             ])
             .unwrap();
 
+        macro_rules! get_uniform_loc {
+            ($type: ty, $identifier: tt) => {
+                glw::UniformLocation::<$type>::new(&program_name, static_cstr!($identifier))
+                    .unwrap_or_else(|| {
+                        panic!("Failed to get uniform location {:?}", $identifier);
+                    })
+            }
+        }
+
         let program_font_texture_loc = unsafe {
-            glw::UniformLocation::<i32>::new(&program_name, static_cstr!("font_texture")).unwrap()
+            get_uniform_loc!(i32, "font_texture")
         };
 
-        let program_pos_from_wld_to_clp_space = unsafe {
-            glw::UniformLocation::<[[f32; 4]; 4]>::new(
-                &program_name,
-                static_cstr!("pos_from_wld_to_clp_space"),
-            ).unwrap()
+        let program_pos_from_wld_to_clp_space_loc = unsafe {
+            get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space")
+        };
+
+        let program_font_size_loc = unsafe {
+            get_uniform_loc!(f32, "font_size")
         };
 
         let vertex_array_name =
@@ -283,25 +294,17 @@ impl TextRenderer {
             glw::bind_texture(glw::TEXTURE_2D, &name);
 
             glw::tex_parameter_i(
-                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_2D,
                 glw::TEXTURE_MIN_FILTER,
                 glw::LINEAR_MIPMAP_LINEAR,
             );
             glw::tex_parameter_i(
-                glw::TEXTURE_2D_ARRAY,
+                glw::TEXTURE_2D,
                 glw::TEXTURE_MAG_FILTER,
                 glw::LINEAR_MIPMAP_LINEAR,
             );
-            glw::tex_parameter_i(
-                glw::TEXTURE_2D_ARRAY,
-                glw::TEXTURE_WRAP_S,
-                glw::CLAMP_TO_EDGE,
-            );
-            glw::tex_parameter_i(
-                glw::TEXTURE_2D_ARRAY,
-                glw::TEXTURE_WRAP_T,
-                glw::CLAMP_TO_EDGE,
-            );
+            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
+            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
 
             {
                 let img = image::open(assets::get_asset_path("font-padded-sdf.png")).unwrap();
@@ -327,7 +330,8 @@ impl TextRenderer {
         TextRenderer {
             program_name,
             _program_font_texture_loc: program_font_texture_loc,
-            program_pos_from_wld_to_clp_space,
+            program_pos_from_wld_to_clp_space_loc,
+            program_font_size_loc,
             texture_name,
             vertex_array_name,
             _vertex_buffer_name: vertex_buffer_name,
@@ -336,7 +340,13 @@ impl TextRenderer {
         }
     }
 
-    pub fn render(&self, pos_from_wld_to_clp_space: &Matrix4<f32>, text: &str, bounds: &Rect) {
+    pub fn render(
+        &self,
+        pos_from_wld_to_clp_space: &Matrix4<f32>,
+        text: &str,
+        font_size: f32,
+        bounds: &Rect,
+    ) {
         // Construct character buffer from text.
         let character_data = {
             let bytes = text.as_bytes();
@@ -345,28 +355,27 @@ impl TextRenderer {
                 x: bounds.x0,
                 y: bounds.y0,
             };
-            const SCALE: f32 = 18.0;
 
-            fn inc_x(offset: &mut Vector2<f32>, bounds: &Rect) {
-                offset.x += SCALE;
+            fn inc_x(offset: &mut Vector2<f32>, font_size: f32, bounds: &Rect) {
+                offset.x += font_size;
                 // Hard wrap.
                 if offset.x >= bounds.x1 {
-                    inc_y(offset, bounds);
+                    inc_y(offset, font_size, bounds);
                 }
             }
 
-            fn inc_y(offset: &mut Vector2<f32>, bounds: &Rect) {
+            fn inc_y(offset: &mut Vector2<f32>, font_size: f32, bounds: &Rect) {
                 offset.x = bounds.x0;
-                offset.y += SCALE;
+                offset.y += font_size;
             }
 
             for &byte in bytes {
                 match byte {
                     b' ' => {
-                        inc_x(&mut offset, bounds);
+                        inc_x(&mut offset, font_size, bounds);
                     }
                     b'\n' | b'\r' => {
-                        inc_y(&mut offset, bounds);
+                        inc_y(&mut offset, font_size, bounds);
                     }
                     _ => {
                         // y might not be in bounds, check before adding.
@@ -376,7 +385,7 @@ impl TextRenderer {
                                 offset: offset,
                             });
                         }
-                        inc_x(&mut offset, bounds);
+                        inc_x(&mut offset, font_size, bounds);
                     }
                 }
             }
@@ -386,6 +395,13 @@ impl TextRenderer {
         unsafe {
             glw::use_program(&self.program_name);
 
+            // Update uniforms.
+            self.program_font_size_loc.set(font_size);
+
+            self.program_pos_from_wld_to_clp_space_loc
+                .set(pos_from_wld_to_clp_space.as_matrix_ref());
+
+            // Update character buffer.
             glw::bind_buffer(glw::ARRAY_BUFFER, &self.character_buffer_name);
 
             gl::BufferData(
@@ -394,16 +410,11 @@ impl TextRenderer {
                 character_data.as_ptr() as *const ::std::os::raw::c_void,             // data
                 gl::STREAM_DRAW,                                                      // usage
             );
-        }
 
-        unsafe {
             glw::bind_vertex_array(&self.vertex_array_name);
 
-            self.program_pos_from_wld_to_clp_space
-                .set(pos_from_wld_to_clp_space.as_matrix_ref());
-
-            // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);
+
             glw::bind_texture(glw::TEXTURE_2D, &self.texture_name);
 
             gl::DrawElementsInstanced(
