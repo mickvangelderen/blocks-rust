@@ -68,8 +68,8 @@ fn main() {
         glutin::ContextBuilder::new()
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
             .with_gl_profile(glutin::GlProfile::Core)
-            .with_vsync(true),
-        // .with_multisampling(16),
+            .with_vsync(true)
+            .with_multisampling(16),
         &events_loop,
     ).unwrap();
 
@@ -329,7 +329,7 @@ fn main() {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::CULL_FACE);
-            // gl::Enable(gl::MULTISAMPLE);
+            gl::Enable(gl::MULTISAMPLE);
         }
 
         // Render scene.
