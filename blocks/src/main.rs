@@ -134,12 +134,6 @@ fn main() {
         let now = time::Instant::now();
 
         while next_update < now {
-            // {
-            //     let elapsed = time::Instant::now().duration_since(simulation_start);
-            //     let elapsed_us = elapsed.as_secs() * 1_000_000 + elapsed.subsec_micros() as u64;
-            //     println!("u\t{}", elapsed_us);
-            // }
-
             let mut new_width = current_width;
             let mut new_height = current_height;
             let mut new_fullscreen = current_fullscreen;
@@ -329,13 +323,6 @@ fn main() {
             thread::sleep(next_update - now);
             continue;
         }
-
-        // Render.
-        // {
-        //     let elapsed = time::Instant::now().duration_since(simulation_start);
-        //     let elapsed_us = elapsed.as_secs() * 1_000_000 + elapsed.subsec_micros() as u64;
-        //     println!("r\t{}", elapsed_us);
-        // }
 
         unsafe {
             gl::ClearColor(r, g, b, 1.0);
