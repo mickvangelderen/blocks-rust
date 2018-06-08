@@ -20,6 +20,7 @@ impl<T> UniformLocation<T> {
 
 impl UniformLocation<i32> {
     /// Assumes the correct program is bound.
+    #[inline]
     pub unsafe fn set(&self, value: i32) {
         gl::Uniform1i(self.as_i32(), value);
     }
@@ -27,6 +28,7 @@ impl UniformLocation<i32> {
 
 impl UniformLocation<[i32; 2]> {
     /// Assumes the correct program is bound.
+    #[inline]
     pub unsafe fn set(&self, value: [i32; 2]) {
         gl::Uniform2i(self.as_i32(), value[0], value[1]);
     }
@@ -34,6 +36,7 @@ impl UniformLocation<[i32; 2]> {
 
 impl UniformLocation<[i32; 3]> {
     /// Assumes the correct program is bound.
+    #[inline]
     pub unsafe fn set(&self, value: [i32; 3]) {
         gl::Uniform3i(self.as_i32(), value[0], value[1], value[2]);
     }
@@ -41,8 +44,41 @@ impl UniformLocation<[i32; 3]> {
 
 impl UniformLocation<[i32; 4]> {
     /// Assumes the correct program is bound.
+    #[inline]
     pub unsafe fn set(&self, value: [i32; 4]) {
         gl::Uniform4i(self.as_i32(), value[0], value[1], value[2], value[3]);
+    }
+}
+
+impl UniformLocation<f32> {
+    /// Assumes the correct program is bound.
+    #[inline]
+    pub unsafe fn set(&self, value: f32) {
+        gl::Uniform1f(self.as_i32(), value);
+    }
+}
+
+impl UniformLocation<[f32; 2]> {
+    /// Assumes the correct program is bound.
+    #[inline]
+    pub unsafe fn set(&self, value: [f32; 2]) {
+        gl::Uniform2f(self.as_i32(), value[0], value[1]);
+    }
+}
+
+impl UniformLocation<[f32; 3]> {
+    /// Assumes the correct program is bound.
+    #[inline]
+    pub unsafe fn set(&self, value: [f32; 3]) {
+        gl::Uniform3f(self.as_i32(), value[0], value[1], value[2]);
+    }
+}
+
+impl UniformLocation<[f32; 4]> {
+    /// Assumes the correct program is bound.
+    #[inline]
+    pub unsafe fn set(&self, value: [f32; 4]) {
+        gl::Uniform4f(self.as_i32(), value[0], value[1], value[2], value[3]);
     }
 }
 
@@ -91,6 +127,7 @@ impl MajorAxis {
 
 impl UniformLocation<[f32; 16]> {
     /// Single 4x4 matrix.
+    #[inline]
     pub unsafe fn set<'a, R: MatrixRef<&'a [f32; 16]>>(&self, value: R) {
         let value = value.into_inner();
         gl::UniformMatrix4fv(
@@ -104,6 +141,7 @@ impl UniformLocation<[f32; 16]> {
 
 impl UniformLocation<[[f32; 4]; 4]> {
     /// Single 4x4 matrix.
+    #[inline]
     pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 4]; 4]>>(&self, value: R) {
         let value = value.into_inner();
         gl::UniformMatrix4fv(
@@ -117,6 +155,7 @@ impl UniformLocation<[[f32; 4]; 4]> {
 
 impl UniformLocation<&'static [[f32; 16]]> {
     /// Array of 4x4 matrices.
+    #[inline]
     pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 16]]>>(&self, value: R) {
         let value = value.into_inner();
         gl::UniformMatrix4fv(
@@ -130,6 +169,7 @@ impl UniformLocation<&'static [[f32; 16]]> {
 
 impl UniformLocation<&'static [[f32; 4]; 4]> {
     /// Array of 4x4 matrices.
+    #[inline]
     pub unsafe fn set<'a, R: MatrixRef<&'a [[f32; 4]; 4]>>(&self, value: R) {
         let value = value.into_inner();
         gl::UniformMatrix4fv(
