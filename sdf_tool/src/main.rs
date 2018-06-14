@@ -4,33 +4,36 @@ use image::GenericImage;
 use image::Pixel;
 
 fn main() {
-    let img = image::open("assets/font.png").unwrap();
+    let mut img_pad = {
+        let img = image::open("assets/font.png").unwrap();
 
-    let mut img = img.to_rgba();
+        let mut img = img.to_rgba();
 
-    // calculate_and_print_histogram(&img);
+        // calculate_and_print_histogram(&img);
 
-    // Pad glyphs.
-    let mut img_pad = image::RgbaImage::new(img.width() * 2, img.height() * 2);
+        // Pad glyphs.
+        let mut img_pad = image::RgbaImage::new(img.width() * 2, img.height() * 2);
 
-    for r in 0..16 {
-        for c in 0..16 {
-            let sub = img.sub_image(c * 64, r * 64, 64, 64);
-            img_pad.copy_from(&sub, c * 128 + 32, r * 128 + 32);
+        for r in 0..16 {
+            for c in 0..16 {
+                let sub = img.sub_image(c * 64, r * 64, 64, 64);
+                img_pad.copy_from(&sub, c * 128 + 32, r * 128 + 32);
+            }
         }
-    }
 
-    img_pad.save("assets/font-padded.png").unwrap();
+        img_pad.save("assets/font-padded.png").unwrap();
+
+        img_pad
+    };
 
     // Calculate sdf
     let mut sdf = image::RgbaImage::new(img_pad.width(), img_pad.height());
 
     const R: i32 = 5;
-    const R_SQ: i32 = R*R;
+    const R_SQ: i32 = R * R;
 
     for (x, y, pixel) in sdf.enumerate_pixels_mut() {
-        let outside: bool =
-            unsafe { img_pad.unsafe_get_pixel(x, y)[3] < 128 };
+        let outside: bool = unsafe { img_pad.unsafe_get_pixel(x, y)[3] < 128 };
         let x = x as i32;
         let y = y as i32;
 
@@ -86,7 +89,6 @@ fn main() {
             assert!(a <= 255.0);
             a
         };
-
 
         *pixel = image::Rgba::from_channels(
             (x % 256) as u8,
