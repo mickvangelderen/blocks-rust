@@ -23,6 +23,7 @@ pub mod camera;
 pub mod cgmath_ext;
 pub mod chunk;
 pub mod chunk_renderer;
+pub mod console;
 pub mod cube;
 pub mod rate_counter;
 pub mod text_renderer;
@@ -83,7 +84,8 @@ fn main() {
     let text_renderer = TextRenderer::new();
 
     let mut should_stop = false;
-    let mut has_focus = false;
+    let mut window_has_focus = false;
+    let mut console_has_focus = false;
     let mut current_width = 0;
     let mut current_height = 0;
     let mut current_fullscreen = false;
@@ -127,7 +129,7 @@ fn main() {
         zoom_velocity: 0.3,
     };
 
-    let mut user_input = String::new();
+    let mut console = console::Console::new();
     let mut font_size = 20.0;
 
     while !should_stop {
@@ -157,12 +159,17 @@ fn main() {
                                 use glutin::VirtualKeyCode;
                                 match input.virtual_keycode {
                                     Some(VirtualKeyCode::Escape) => {
-                                        if input.state == ElementState::Pressed && has_focus {
-                                            should_stop = true;
+                                        if input.state == ElementState::Pressed {
+                                            if console_has_focus {
+                                                console_has_focus = false;
+                                            } else if window_has_focus {
+                                                should_stop = true;
+                                            }
                                         }
                                     }
                                     Some(VirtualKeyCode::F11) => {
-                                        if input.state == ElementState::Pressed && has_focus {
+                                        if input.state == ElementState::Pressed && window_has_focus
+                                        {
                                             new_fullscreen = !new_fullscreen;
                                         }
                                     }
@@ -172,35 +179,46 @@ fn main() {
                                     Some(VirtualKeyCode::D) => input_right = input.state,
                                     Some(VirtualKeyCode::Q) => input_up = input.state,
                                     Some(VirtualKeyCode::Z) => input_down = input.state,
+                                    Some(VirtualKeyCode::Slash) | Some(VirtualKeyCode::Grave) => {
+                                        if input.state == ElementState::Pressed
+                                            && window_has_focus
+                                            && !console_has_focus
+                                        {
+                                            console_has_focus = true;
+                                        }
+                                    }
                                     Some(VirtualKeyCode::Add) => {
-                                        if input.state == ElementState::Pressed && has_focus {
+                                        if input.state == ElementState::Pressed
+                                            && window_has_focus
+                                            && !console_has_focus
+                                        {
                                             font_size += 1.0;
                                             if font_size > 200.0 {
                                                 font_size = 200.0;
                                             }
                                         }
-                                    },
+                                    }
                                     Some(VirtualKeyCode::Subtract) => {
-                                        if input.state == ElementState::Pressed && has_focus {
+                                        if input.state == ElementState::Pressed
+                                            && window_has_focus
+                                            && !console_has_focus
+                                        {
                                             font_size -= 1.0;
                                             if font_size < 1.0 {
                                                 font_size = 1.0;
                                             }
                                         }
-                                    },
+                                    }
                                     _ => (),
                                 }
                             }
-                            WindowEvent::ReceivedCharacter(c) => match c {
-                                '\u{8}' => {
-                                    user_input.pop();
+                            WindowEvent::ReceivedCharacter(c) => {
+                                if window_has_focus && console_has_focus {
+                                    console.write(c);
                                 }
-                                _ => {
-                                    user_input.push(c);
-                                }
-                            },
+                            }
                             WindowEvent::Focused(state) => {
-                                has_focus = state;
+                                window_has_focus = state;
                             }
                             _ => (),
                         }
@@ -222,6 +240,18 @@ fn main() {
                         }
                     }
                     _ => (),
+                }
+            });
+
+            console.parse_commands(|command| {
+                use console::Command;
+                match command {
+                    Command::Invalid(content) => {
+                        println!("Invalid command {:?}", content);
+                    },
+                    Command::Quit => {
+                        should_stop = true;
+                    }
                 }
             });
 
@@ -383,17 +413,19 @@ fn main() {
             );
         }
 
-        text_renderer.render(
-            &pos_from_wld_to_clp_space,
-            &user_input,
-            font_size,
-            &text_renderer::Rect::from_dims(
+        if console_has_focus {
+            text_renderer.render(
+                &pos_from_wld_to_clp_space,
+                console.input(),
                 font_size,
-                font_size*3.0,
-                viewport.width() as f32 - font_size,
-                viewport.height() as f32 - font_size,
-            ),
-        );
+                &text_renderer::Rect::from_dims(
+                    font_size,
+                    font_size * 3.0,
+                    viewport.width() as f32 - font_size,
+                    viewport.height() as f32 - font_size,
+                ),
+            );
+        }
 
         gl_window.swap_buffers().unwrap();
 

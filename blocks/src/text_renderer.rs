@@ -32,7 +32,7 @@ const GLYPHS_PER_SIDE: u32 = 16;
 const TEX_POS_OFF: f32 = {
     const BOX: u32 = 128;
     const GLYPH: u32 = 64;
-    const PAD: u32 = 4;
+    const PAD: u32 = 5;
     const SPACE: f32 = (BOX - GLYPH - 2 * PAD) as f32 / 2.0;
     SPACE / BOX as f32
 };

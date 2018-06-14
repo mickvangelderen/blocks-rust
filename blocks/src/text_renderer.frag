@@ -28,7 +28,7 @@ void bw() {
 
   if (color.a < 0.2) {
     discard;
-  } else if (color.a < 0.5) {
+  } else if (color.a < 0.4) {
     color = vec4(0.0, 0.0, 0.0, 1.0);
   } else {
     color = vec4(1.0, 1.0, 1.0, 1.0);
@@ -36,5 +36,5 @@ void bw() {
 }
 
 void main() {
-  fancy();
+  bw();
 }
