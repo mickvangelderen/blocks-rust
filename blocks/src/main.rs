@@ -248,7 +248,7 @@ fn main() {
                 match command {
                     Command::Invalid(content) => {
                         println!("Invalid command {:?}", content);
-                    },
+                    }
                     Command::Quit => {
                         should_stop = true;
                     }
@@ -327,11 +327,11 @@ fn main() {
             // Update render buffer sizes and stuff.
             if new_fullscreen != current_fullscreen {
                 current_fullscreen = new_fullscreen;
-                if current_fullscreen {
-                    gl_window.set_fullscreen(Some(gl_window.get_current_monitor()));
+                gl_window.set_fullscreen(if current_fullscreen {
+                    Some(gl_window.get_current_monitor())
                 } else {
-                    gl_window.set_fullscreen(None);
-                }
+                    None
+                });
             }
 
             if new_width != current_width || new_height != current_height {
