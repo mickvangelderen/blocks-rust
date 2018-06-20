@@ -4,7 +4,7 @@ use image::GenericImage;
 use image::Pixel;
 
 fn main() {
-    let mut img_pad = {
+    let img_pad = {
         let img = image::open("assets/font.png").unwrap();
 
         let mut img = img.to_rgba();
