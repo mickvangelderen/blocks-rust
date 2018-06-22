@@ -15,6 +15,7 @@ pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {
     gl::BindBuffer(target as u32, name.as_u32());
 }
 
+#[inline]
 pub unsafe fn bind_vertex_array(name: &VertexArrayName) {
     gl::BindVertexArray(name.as_u32());
 }
