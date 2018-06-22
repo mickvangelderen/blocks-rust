@@ -5,6 +5,7 @@ extern crate gl;
 
 mod buffer_name;
 mod buffer_target;
+mod framebuffer_name;
 mod functions;
 mod max_combined_texture_image_units;
 mod name;
@@ -26,6 +27,7 @@ pub mod string;
 
 pub use self::buffer_name::*;
 pub use self::buffer_target::*;
+pub use self::framebuffer_name::*;
 pub use self::functions::*;
 pub use self::max_combined_texture_image_units::*;
 pub use self::program::*;

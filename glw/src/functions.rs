@@ -8,6 +8,7 @@ use texture_target::*;
 use texture_unit::*;
 use texture_wrap::*;
 use vertex_array_name::*;
+use framebuffer_name::*;
 
 #[inline]
 pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {
@@ -163,4 +164,14 @@ pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
         ::std::mem::size_of::<[u32; 2]>(),
     );
     gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+/// Careful, simply overwrites {names} and doesn't drop the values.
+#[inline]
+pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
+    assert_eq!(
+        ::std::mem::size_of::<[Option<FramebufferName>; 2]>(),
+        ::std::mem::size_of::<[u32; 2]>(),
+    );
+    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
