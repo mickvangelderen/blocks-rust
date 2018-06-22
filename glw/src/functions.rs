@@ -9,6 +9,7 @@ use texture_name::*;
 use texture_parameter::*;
 use texture_target::*;
 use texture_unit::*;
+use uniform_location::*;
 use vertex_array_name::*;
 
 #[inline]
@@ -136,4 +137,68 @@ pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
         ::std::mem::size_of::<[u32; 2]>(),
     );
     gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn uniform_1i(uniform_location: &UniformLocation<i32>, value: i32) {
+    gl::Uniform1i(uniform_location.as_i32(), value);
+}
+
+#[inline]
+pub unsafe fn uniform_2i<T: AsRef<[i32; 2]>>(
+    uniform_location: &UniformLocation<[i32; 2]>,
+    value: T,
+) {
+    let value = value.as_ref();
+    gl::Uniform2i(uniform_location.as_i32(), value[0], value[1]);
+}
+
+#[inline]
+pub unsafe fn uniform_3i<T: AsRef<[i32; 3]>>(
+    uniform_location: &UniformLocation<[i32; 3]>,
+    value: T,
+) {
+    let value = value.as_ref();
+    gl::Uniform3i(uniform_location.as_i32(), value[0], value[1], value[2]);
+}
+
+#[inline]
+pub unsafe fn uniform_4i<T: AsRef<[i32; 4]>>(
+    uniform_location: &UniformLocation<[i32; 4]>,
+    value: T,
+) {
+    let value = value.as_ref();
+    gl::Uniform4i(
+        uniform_location.as_i32(),
+        value[0],
+        value[1],
+        value[2],
+        value[3],
+    );
+}
+
+#[inline]
+pub unsafe fn uniform_1f(uniform_location: &UniformLocation<f32>, value: f32) {
+    gl::Uniform1f(uniform_location.as_i32(), value);
+}
+
+#[inline]
+pub unsafe fn uniform_2f(uniform_location: &UniformLocation<[f32; 2]>, value: [f32; 2]) {
+    gl::Uniform2f(uniform_location.as_i32(), value[0], value[1]);
+}
+
+#[inline]
+pub unsafe fn uniform_3f(uniform_location: &UniformLocation<[f32; 3]>, value: [f32; 3]) {
+    gl::Uniform3f(uniform_location.as_i32(), value[0], value[1], value[2]);
+}
+
+#[inline]
+pub unsafe fn uniform_4f(uniform_location: &UniformLocation<[f32; 4]>, value: [f32; 4]) {
+    gl::Uniform4f(
+        uniform_location.as_i32(),
+        value[0],
+        value[1],
+        value[2],
+        value[3],
+    );
 }
