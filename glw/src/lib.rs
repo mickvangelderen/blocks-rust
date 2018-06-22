@@ -5,6 +5,7 @@ extern crate gl;
 
 mod buffer_name;
 mod buffer_target;
+mod framebuffer_attachment;
 mod framebuffer_name;
 mod framebuffer_target;
 mod functions;
@@ -29,6 +30,7 @@ pub mod string;
 
 pub use self::buffer_name::*;
 pub use self::buffer_target::*;
+pub use self::framebuffer_attachment::*;
 pub use self::framebuffer_name::*;
 pub use self::framebuffer_target::*;
 pub use self::functions::*;
