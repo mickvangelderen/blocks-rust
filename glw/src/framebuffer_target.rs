@@ -10,7 +10,7 @@ pub enum FramebufferTarget {
 
 pub const DRAW_FRAMEBUFFER: FramebufferTarget = FramebufferTarget::DrawFramebuffer;
 pub const READ_FRAMEBUFFER: FramebufferTarget = FramebufferTarget::ReadFramebuffer;
-pub const FRAMEBUFFER: FramebufferTarget = FramebufferTarget::ReadFramebuffer;
+pub const FRAMEBUFFER: FramebufferTarget = FramebufferTarget::Framebuffer;
 
 impl FramebufferTarget {
     pub fn as_u32(&self) -> u32 {
