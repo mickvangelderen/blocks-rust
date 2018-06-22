@@ -1,5 +1,6 @@
 use buffer_name::*;
 use buffer_target::*;
+use framebuffer_attachment::*;
 use framebuffer_name::*;
 use framebuffer_target::*;
 use gl;
@@ -41,6 +42,22 @@ where
     T: MaybeDefaultFramebufferName,
 {
     gl::BindFramebuffer(target.as_u32(), name.as_u32());
+}
+#[inline]
+pub unsafe fn framebuffer_texture_2d(
+    framebuffer_target: FramebufferTarget,
+    framebuffer_attachment: FramebufferAttachment,
+    texture_target: TextureTarget,
+    texture_name: &TextureName,
+    mipmap_level: i32,
+) {
+    gl::FramebufferTexture2D(
+        framebuffer_target.as_u32(),
+        framebuffer_attachment.as_u32(),
+        texture_target.as_u32(),
+        texture_name.as_u32(),
+        mipmap_level,
+    );
 }
 
 #[inline]
