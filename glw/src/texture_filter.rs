@@ -1,4 +1,5 @@
 use gl;
+use texture_parameter::*;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(u32)]
@@ -49,3 +50,29 @@ pub const NEAREST_MIPMAP_NEAREST: TextureFilter = TextureFilter::NearestMipmapNe
 pub const LINEAR_MIPMAP_NEAREST: TextureFilter = TextureFilter::LinearMipmapNearest;
 pub const NEAREST_MIPMAP_LINEAR: TextureFilter = TextureFilter::NearestMipmapLinear;
 pub const LINEAR_MIPMAP_LINEAR: TextureFilter = TextureFilter::LinearMipmapLinear;
+
+impl TextureParameterI32Value for TextureFilter {
+    #[inline]
+    fn as_i32(&self) -> i32 {
+        *self as i32
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(u32)]
+pub enum TextureFilterKey {
+    TextureMinFilter = gl::TEXTURE_MIN_FILTER,
+    TextureMagFilter = gl::TEXTURE_MAG_FILTER,
+}
+
+pub const TEXTURE_MIN_FILTER: TextureFilterKey = TextureFilterKey::TextureMinFilter;
+pub const TEXTURE_MAG_FILTER: TextureFilterKey = TextureFilterKey::TextureMagFilter;
+
+impl TextureParameterI32Key for TextureFilterKey {
+    type Value = TextureFilter;
+
+    #[inline]
+    fn as_u32(&self) -> u32 {
+        *self as u32
+    }
+}

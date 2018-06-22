@@ -4,11 +4,10 @@ use framebuffer_name::*;
 use framebuffer_target::*;
 use gl;
 use program::*;
-use texture_filter::*;
 use texture_name::*;
+use texture_parameter::*;
 use texture_target::*;
 use texture_unit::*;
-use texture_wrap::*;
 use vertex_array_name::*;
 
 #[inline]
@@ -38,72 +37,10 @@ pub unsafe fn bind_texture(target: TextureTarget, name: &TextureName) {
 
 #[inline]
 pub unsafe fn bind_framebuffer<T>(target: FramebufferTarget, name: &T)
-where T: MaybeDefaultFramebufferName {
+where
+    T: MaybeDefaultFramebufferName,
+{
     gl::BindFramebuffer(target.as_u32(), name.as_u32());
-}
-
-pub trait TextureParameterI32Value {
-    fn as_i32(&self) -> i32;
-}
-
-impl TextureParameterI32Value for TextureFilter {
-    #[inline]
-    fn as_i32(&self) -> i32 {
-        *self as i32
-    }
-}
-
-impl TextureParameterI32Value for TextureWrap {
-    #[inline]
-    fn as_i32(&self) -> i32 {
-        *self as i32
-    }
-}
-
-pub trait TextureParameterI32Key {
-    type Value: TextureParameterI32Value;
-
-    fn as_u32(&self) -> u32;
-}
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-#[repr(u32)]
-pub enum TextureFilterKey {
-    TextureMinFilter = gl::TEXTURE_MIN_FILTER,
-    TextureMagFilter = gl::TEXTURE_MAG_FILTER,
-}
-
-pub const TEXTURE_MIN_FILTER: TextureFilterKey = TextureFilterKey::TextureMinFilter;
-pub const TEXTURE_MAG_FILTER: TextureFilterKey = TextureFilterKey::TextureMagFilter;
-
-impl TextureParameterI32Key for TextureFilterKey {
-    type Value = TextureFilter;
-
-    #[inline]
-    fn as_u32(&self) -> u32 {
-        *self as u32
-    }
-}
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-#[repr(u32)]
-pub enum TextureWrapKey {
-    TextureWrapS = gl::TEXTURE_WRAP_S,
-    TextureWrapT = gl::TEXTURE_WRAP_T,
-    TextureWrapR = gl::TEXTURE_WRAP_R,
-}
-
-pub const TEXTURE_WRAP_S: TextureWrapKey = TextureWrapKey::TextureWrapS;
-pub const TEXTURE_WRAP_T: TextureWrapKey = TextureWrapKey::TextureWrapT;
-pub const TEXTURE_WRAP_R: TextureWrapKey = TextureWrapKey::TextureWrapR;
-
-impl TextureParameterI32Key for TextureWrapKey {
-    type Value = TextureWrap;
-
-    #[inline]
-    fn as_u32(&self) -> u32 {
-        *self as u32
-    }
 }
 
 #[inline]
