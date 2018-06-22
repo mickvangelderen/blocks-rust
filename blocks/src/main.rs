@@ -25,6 +25,7 @@ pub mod chunk;
 pub mod chunk_renderer;
 pub mod console;
 pub mod cube;
+pub mod post_renderer;
 pub mod rate_counter;
 pub mod text_renderer;
 
@@ -35,6 +36,7 @@ use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk_renderer::ChunkRenderer;
 use glutin::GlContext;
+use post_renderer::PostRenderer;
 use std::{thread, time};
 use text_renderer::TextRenderer;
 
@@ -69,8 +71,8 @@ fn main() {
         glutin::ContextBuilder::new()
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
             .with_gl_profile(glutin::GlProfile::Core)
-            .with_vsync(true)
-            .with_multisampling(16),
+            .with_vsync(true),
+        // .with_multisampling(16),
         &events_loop,
     ).unwrap();
 
@@ -131,6 +133,88 @@ fn main() {
 
     let mut console = console::Console::new();
     let mut font_size = 20.0;
+
+    let color_texture_name = unsafe {
+        let name = glw::TextureName::new().unwrap();
+
+        glw::bind_texture(glw::TEXTURE_2D, &name);
+
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_MIN_FILTER, glw::LINEAR);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_MAG_FILTER, glw::LINEAR);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
+
+        glw::tex_image_2d(
+            glw::TEXTURE_2D,
+            0,
+            gl::RGBA8 as i32,
+            viewport.width(),
+            viewport.height(),
+            gl::RGBA,
+            gl::UNSIGNED_BYTE,
+            std::ptr::null(),
+        );
+
+        name
+    };
+
+    let depth_stencil_texture_name = unsafe {
+        let name = glw::TextureName::new().unwrap();
+
+        glw::bind_texture(glw::TEXTURE_2D, &name);
+
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_MIN_FILTER, glw::NEAREST);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_MAG_FILTER, glw::NEAREST);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
+        glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
+
+        glw::tex_image_2d(
+            glw::TEXTURE_2D,
+            0,
+            gl::DEPTH24_STENCIL8 as i32,
+            viewport.width(),
+            viewport.height(),
+            gl::DEPTH_STENCIL,
+            gl::UNSIGNED_INT_24_8,
+            std::ptr::null(),
+        );
+
+        name
+    };
+
+    let framebuffer_name = unsafe {
+        let name = glw::FramebufferName::new().unwrap();
+
+        glw::bind_framebuffer(glw::FRAMEBUFFER, &name);
+
+        glw::framebuffer_texture_2d(
+            glw::FRAMEBUFFER,
+            glw::COLOR_ATTACHMENT0,
+            glw::TEXTURE_2D,
+            &color_texture_name,
+            0,
+        );
+
+        glw::framebuffer_texture_2d(
+            glw::FRAMEBUFFER,
+            glw::DEPTH_STENCIL_ATTACHMENT,
+            glw::TEXTURE_2D,
+            &depth_stencil_texture_name,
+            0,
+        );
+
+        let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+
+        assert_eq!(
+            status,
+            gl::FRAMEBUFFER_COMPLETE,
+            "Expected framebufer to be complete."
+        );
+
+        name
+    };
+
+    let post_renderer = PostRenderer::new(&color_texture_name, &depth_stencil_texture_name);
 
     while !should_stop {
         let now = time::Instant::now();
@@ -342,6 +426,33 @@ fn main() {
                     .update()
                     .width(current_width as i32)
                     .height(current_height as i32);
+
+                // Update framebuffer texture sizes.
+                unsafe {
+                    glw::bind_texture(glw::TEXTURE_2D, &color_texture_name);
+                    glw::tex_image_2d(
+                        glw::TEXTURE_2D,
+                        0,
+                        gl::RGBA8 as i32,
+                        viewport.width(),
+                        viewport.height(),
+                        gl::RGBA,
+                        gl::UNSIGNED_BYTE,
+                        std::ptr::null(),
+                    );
+
+                    glw::bind_texture(glw::TEXTURE_2D, &depth_stencil_texture_name);
+                    glw::tex_image_2d(
+                        glw::TEXTURE_2D,
+                        0,
+                        gl::DEPTH24_STENCIL8 as i32,
+                        viewport.width(),
+                        viewport.height(),
+                        gl::DEPTH_STENCIL,
+                        gl::UNSIGNED_INT_24_8,
+                        std::ptr::null(),
+                    );
+                }
             }
 
             next_update += time::Duration::from_nanos((1000_000_000f64 / DESIRED_UPS) as u64);
@@ -355,21 +466,26 @@ fn main() {
         }
 
         unsafe {
+            glw::bind_framebuffer(glw::FRAMEBUFFER, &framebuffer_name);
+
             gl::ClearColor(r, g, b, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::Enable(gl::DEPTH_TEST);
             gl::Enable(gl::CULL_FACE);
-            gl::Enable(gl::MULTISAMPLE);
+            // gl::Enable(gl::MULTISAMPLE);
         }
 
         // Render scene.
         let pos_from_wld_to_cam_space = camera.pos_from_wld_to_cam_space();
 
+        const Z_NEAR: f32 = 0.1;
+        const Z_FAR: f32 = 100.0;
+
         let pos_from_cam_to_clp_space = Matrix4::from(PerspectiveFov {
             fovy: Rad::from(camera.fovy),
             aspect: viewport.aspect(),
-            near: 0.1,
-            far: 100.0,
+            near: Z_NEAR,
+            far: Z_FAR,
         });
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
@@ -378,8 +494,12 @@ fn main() {
 
         // Render ui
         unsafe {
+            glw::bind_framebuffer(glw::FRAMEBUFFER, &glw::DEFAULT_FRAMEBUFFER_NAME);
+            gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::Disable(gl::DEPTH_TEST);
         }
+
+        post_renderer.render(Z_NEAR, Z_FAR);
 
         // obj
         let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {

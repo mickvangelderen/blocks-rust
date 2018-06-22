@@ -44,6 +44,7 @@ where
 {
     gl::BindFramebuffer(target.as_u32(), name.as_u32());
 }
+
 #[inline]
 pub unsafe fn framebuffer_texture_2d(
     framebuffer_target: FramebufferTarget,
