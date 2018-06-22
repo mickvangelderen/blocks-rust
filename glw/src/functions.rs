@@ -1,5 +1,7 @@
 use buffer_name::*;
 use buffer_target::*;
+use framebuffer_name::*;
+use framebuffer_target::*;
 use gl;
 use program::*;
 use texture_filter::*;
@@ -8,7 +10,6 @@ use texture_target::*;
 use texture_unit::*;
 use texture_wrap::*;
 use vertex_array_name::*;
-use framebuffer_name::*;
 
 #[inline]
 pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {
@@ -33,6 +34,12 @@ pub unsafe fn active_texture(unit: TextureUnit) {
 #[inline]
 pub unsafe fn bind_texture(target: TextureTarget, name: &TextureName) {
     gl::BindTexture(target as u32, name.as_u32());
+}
+
+#[inline]
+pub unsafe fn bind_framebuffer<T>(target: FramebufferTarget, name: &T)
+where T: MaybeDefaultFramebufferName {
+    gl::BindFramebuffer(target.as_u32(), name.as_u32());
 }
 
 pub trait TextureParameterI32Value {

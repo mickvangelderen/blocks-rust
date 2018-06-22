@@ -2,10 +2,25 @@ use functions;
 use gl;
 use name::Name;
 
-#[derive(Debug)]
+pub trait MaybeDefaultFramebufferName {
+    unsafe fn as_u32(&self) -> u32;
+}
+
+pub struct DefaultFramebufferName();
+
+pub const DEFAULT_FRAMEBUFFER_NAME: DefaultFramebufferName = DefaultFramebufferName();
+
+impl MaybeDefaultFramebufferName for DefaultFramebufferName {
+    #[inline]
+    unsafe fn as_u32(&self) -> u32 {
+        0
+    }
+}
+
 pub struct FramebufferName(Name);
 
 impl FramebufferName {
+    #[inline]
     pub unsafe fn new() -> Option<Self> {
         let [name] = <[Option<Self>; 1]>::new();
         name
@@ -23,6 +38,13 @@ impl Drop for FramebufferName {
         unsafe {
             gl::DeleteFramebuffers(1, &self.as_u32());
         }
+    }
+}
+
+impl MaybeDefaultFramebufferName for FramebufferName {
+    #[inline]
+    unsafe fn as_u32(&self) -> u32 {
+        FramebufferName::as_u32(self)
     }
 }
 
