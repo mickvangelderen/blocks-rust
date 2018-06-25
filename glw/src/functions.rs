@@ -203,3 +203,12 @@ pub unsafe fn uniform_4f(uniform_location: &UniformLocation<[f32; 4]>, value: [f
         value[3],
     );
 }
+
+#[inline]
+pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value: &[f32]) {
+    gl::Uniform1fv(
+        uniform_location.as_i32(),
+        value.len() as i32,
+        value.as_ptr()
+    );
+}

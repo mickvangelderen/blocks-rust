@@ -2,6 +2,7 @@ use cgmath::*;
 use gl;
 use glw;
 
+use frustrum::Frustrum;
 use glw::BufferNameArray;
 
 struct Vertex {
@@ -38,8 +39,13 @@ static ELEMENT_DATA: [u32; 4] = [0, 1, 2, 3];
 
 pub struct PostRenderer<'a> {
     program_name: glw::LinkedProgramName,
-    z_near_loc: Option<glw::UniformLocation<f32>>,
-    z_far_loc: Option<glw::UniformLocation<f32>>,
+    mode_loc: Option<glw::UniformLocation<i32>>,
+    frustrum_x0_loc: Option<glw::UniformLocation<f32>>,
+    frustrum_x1_loc: Option<glw::UniformLocation<f32>>,
+    frustrum_y0_loc: Option<glw::UniformLocation<f32>>,
+    frustrum_y1_loc: Option<glw::UniformLocation<f32>>,
+    frustrum_z0_loc: Option<glw::UniformLocation<f32>>,
+    frustrum_z1_loc: Option<glw::UniformLocation<f32>>,
     color_texture_name: &'a glw::TextureName,
     depth_stencil_texture_name: &'a glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
@@ -81,8 +87,13 @@ impl<'a> PostRenderer<'a> {
         let vertex_buffer_name = vertex_buffer_name.unwrap();
         let element_buffer_name = element_buffer_name.unwrap();
 
-        let z_near_loc;
-        let z_far_loc;
+        let mode_loc;
+        let frustrum_x0_loc;
+        let frustrum_x1_loc;
+        let frustrum_y0_loc;
+        let frustrum_y1_loc;
+        let frustrum_z0_loc;
+        let frustrum_z1_loc;
 
         unsafe {
             glw::use_program(&program_name);
@@ -103,8 +114,19 @@ impl<'a> PostRenderer<'a> {
                 println!("Warning: Couldn't find depth_stencil_texture_loc");
             }
 
-            z_near_loc = glw::UniformLocation::<f32>::new(&program_name, static_cstr!("z_near"));
-            z_far_loc = glw::UniformLocation::<f32>::new(&program_name, static_cstr!("z_far"));
+            mode_loc = glw::UniformLocation::<i32>::new(&program_name, static_cstr!("mode"));
+            frustrum_x0_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.x0"));
+            frustrum_x1_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.x1"));
+            frustrum_y0_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.y0"));
+            frustrum_y1_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.y1"));
+            frustrum_z0_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.z0"));
+            frustrum_z1_loc =
+                glw::UniformLocation::<f32>::new(&program_name, static_cstr!("frustrum.z1"));
 
             glw::bind_vertex_array(&vertex_array_name);
 
@@ -156,8 +178,13 @@ impl<'a> PostRenderer<'a> {
 
         PostRenderer {
             program_name,
-            z_near_loc,
-            z_far_loc,
+            mode_loc,
+            frustrum_x0_loc,
+            frustrum_x1_loc,
+            frustrum_y0_loc,
+            frustrum_y1_loc,
+            frustrum_z0_loc,
+            frustrum_z1_loc,
             color_texture_name,
             depth_stencil_texture_name,
             vertex_array_name,
@@ -166,16 +193,36 @@ impl<'a> PostRenderer<'a> {
         }
     }
 
-    pub fn render(&self, z_near: f32, z_far: f32) {
+    pub fn render(&self, mode: i32, frustrum: &Frustrum) {
         unsafe {
             glw::use_program(&self.program_name);
 
-            if let Some(ref loc) = self.z_near_loc {
-                glw::uniform_1f(loc, z_near);
+            if let Some(ref loc) = self.mode_loc {
+                glw::uniform_1i(loc, mode);
             }
 
-            if let Some(ref loc) = self.z_far_loc {
-                glw::uniform_1f(loc, z_far);
+            if let Some(ref loc) = self.frustrum_x0_loc {
+                glw::uniform_1f(loc, frustrum.x0);
+            }
+
+            if let Some(ref loc) = self.frustrum_x1_loc {
+                glw::uniform_1f(loc, frustrum.x1);
+            }
+
+            if let Some(ref loc) = self.frustrum_y0_loc {
+                glw::uniform_1f(loc, frustrum.y0);
+            }
+
+            if let Some(ref loc) = self.frustrum_y1_loc {
+                glw::uniform_1f(loc, frustrum.y1);
+            }
+
+            if let Some(ref loc) = self.frustrum_z0_loc {
+                glw::uniform_1f(loc, frustrum.z0);
+            }
+
+            if let Some(ref loc) = self.frustrum_z1_loc {
+                glw::uniform_1f(loc, frustrum.z1);
             }
 
             glw::active_texture(glw::TEXTURE0);

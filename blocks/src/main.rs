@@ -18,6 +18,7 @@ extern crate glw;
 extern crate image;
 
 pub mod assets;
+pub mod frustrum;
 pub mod block;
 pub mod camera;
 pub mod cgmath_ext;
@@ -39,6 +40,7 @@ use glutin::GlContext;
 use post_renderer::PostRenderer;
 use std::{thread, time};
 use text_renderer::TextRenderer;
+use frustrum::Frustrum;
 
 fn main() {
     let mut chunk = Chunk {
@@ -107,6 +109,26 @@ fn main() {
     let mut next_update = simulation_start;
     let mut next_render = simulation_start;
 
+    #[repr(i32)]
+    #[derive(Eq, PartialEq, Copy, Clone)]
+    enum RenderMode {
+        Color = 0,
+        Depth = 1,
+        Debug = 2,
+    }
+
+    impl RenderMode {
+        fn next(&self) -> RenderMode {
+            match *self {
+                RenderMode::Color => RenderMode::Depth,
+                RenderMode::Depth => RenderMode::Debug,
+                RenderMode::Debug => RenderMode::Color,
+            }
+        }
+    }
+
+    let mut render_mode = RenderMode::Color;
+
     let mut r = 0.9;
     let mut g = 0.8;
     let mut b = 0.7;
@@ -120,11 +142,11 @@ fn main() {
     let mut camera = camera::Camera {
         position: Vector3 {
             x: 4.0,
-            y: 0.0,
+            y: 2.0,
             z: 10.0,
         },
-        yaw: Rad(0.0),
-        pitch: Rad(0.0),
+        yaw: Rad::from(Deg(60.0)),
+        pitch: Rad::from(Deg(10.0)),
         fovy: Rad::from(Deg(45.0)),
         positional_velocity: 2.0,
         angular_velocity: 0.2,
@@ -263,6 +285,14 @@ fn main() {
                                     Some(VirtualKeyCode::D) => input_right = input.state,
                                     Some(VirtualKeyCode::Q) => input_up = input.state,
                                     Some(VirtualKeyCode::Z) => input_down = input.state,
+                                    Some(VirtualKeyCode::R) => {
+                                        if input.state == ElementState::Pressed
+                                            && window_has_focus
+                                            && !console_has_focus
+                                        {
+                                            render_mode = render_mode.next();
+                                        }
+                                    }
                                     Some(VirtualKeyCode::Slash) | Some(VirtualKeyCode::Grave) => {
                                         if input.state == ElementState::Pressed
                                             && window_has_focus
@@ -478,14 +508,27 @@ fn main() {
         // Render scene.
         let pos_from_wld_to_cam_space = camera.pos_from_wld_to_cam_space();
 
-        const Z_NEAR: f32 = 0.1;
-        const Z_FAR: f32 = 100.0;
+        let frustrum = {
+            let z0 = 0.2;
+            let dy = z0 * Rad::tan(Rad::from(camera.fovy) / 2.0);
+            let dx = dy * viewport.aspect();
+            Frustrum {
+                x0: -dx,
+                x1: dx,
+                y0: -dy,
+                y1: dy,
+                z0,
+                z1: 100.0,
+            }
+        };
 
-        let pos_from_cam_to_clp_space = Matrix4::from(PerspectiveFov {
-            fovy: Rad::from(camera.fovy),
-            aspect: viewport.aspect(),
-            near: Z_NEAR,
-            far: Z_FAR,
+        let pos_from_cam_to_clp_space = Matrix4::from(Perspective {
+            left: frustrum.x0,
+            right: frustrum.x1,
+            bottom: frustrum.y0,
+            top: frustrum.y1,
+            near: frustrum.z0,
+            far: frustrum.z1,
         });
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
@@ -499,7 +542,7 @@ fn main() {
             gl::Disable(gl::DEPTH_TEST);
         }
 
-        post_renderer.render(Z_NEAR, Z_FAR);
+        post_renderer.render(render_mode as i32, &frustrum);
 
         // obj
         let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
