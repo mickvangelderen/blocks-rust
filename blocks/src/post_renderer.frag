@@ -47,7 +47,7 @@ void main() {
     float z_cam = z_from_ndc_to_cam_space(z_ndc);
     vec3 pos_cam = vec3(fs_ray*z_cam, z_cam);
     color = texture(color_texture, fs_tex_pos);
-    if (pos_cam.x > -0.5 && pos_cam.x < 0.5 && pos_cam.z < frustrum.z1) {
+    if (pos_cam.x > -0.5 && pos_cam.x < 0.5 && -frustrum.z1 < pos_cam.z) {
       color = vec4(1.0, 0.0, 0.0, 1.0);
     }
   }
