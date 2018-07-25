@@ -46,6 +46,8 @@ pub struct PostRenderer<'a> {
     frustrum_y1_loc: Option<glw::UniformLocation<f32>>,
     frustrum_z0_loc: Option<glw::UniformLocation<f32>>,
     frustrum_z1_loc: Option<glw::UniformLocation<f32>>,
+    mouse_pos_loc: Option<glw::UniformLocation<[f32; 2]>>,
+    viewport_loc: Option<glw::UniformLocation<[f32; 2]>>,
     color_texture_name: &'a glw::TextureName,
     depth_stencil_texture_name: &'a glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
@@ -94,6 +96,8 @@ impl<'a> PostRenderer<'a> {
         let frustrum_y1_loc;
         let frustrum_z0_loc;
         let frustrum_z1_loc;
+        let viewport_loc;
+        let mouse_pos_loc;
 
         unsafe {
             glw::use_program(&program_name);
@@ -152,6 +156,10 @@ impl<'a> PostRenderer<'a> {
                 ::std::mem::size_of::<Vertex>() as i32, // stride
                 0 as *const ::std::os::raw::c_void,     // offset
             );
+            viewport_loc =
+                glw::UniformLocation::<[f32; 2]>::new(&program_name, static_cstr!("viewport"));
+            mouse_pos_loc =
+                glw::UniformLocation::<[f32; 2]>::new(&program_name, static_cstr!("mouse_pos"));
 
             let vs_tex_pos_loc =
                 gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_tex_pos"));
@@ -185,6 +193,8 @@ impl<'a> PostRenderer<'a> {
             frustrum_y1_loc,
             frustrum_z0_loc,
             frustrum_z1_loc,
+            mouse_pos_loc,
+            viewport_loc,
             color_texture_name,
             depth_stencil_texture_name,
             vertex_array_name,
@@ -193,7 +203,7 @@ impl<'a> PostRenderer<'a> {
         }
     }
 
-    pub fn render(&self, mode: i32, frustrum: &Frustrum) {
+    pub fn render(&self, mode: i32, frustrum: &Frustrum, viewport: &glw::Viewport, mouse: Vector2<f32>) {
         unsafe {
             glw::use_program(&self.program_name);
 
@@ -223,6 +233,14 @@ impl<'a> PostRenderer<'a> {
 
             if let Some(ref loc) = self.frustrum_z1_loc {
                 glw::uniform_1f(loc, frustrum.z1);
+            }
+
+            if let Some(ref loc) = self.viewport_loc {
+                glw::uniform_2f(loc, [viewport.width() as f32, viewport.height() as f32]);
+            }
+
+            if let Some(ref loc) = self.mouse_pos_loc {
+                glw::uniform_2f(loc, [mouse.x, mouse.y]);
             }
 
             glw::active_texture(glw::TEXTURE0);

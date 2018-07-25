@@ -153,6 +153,8 @@ fn main() {
         zoom_velocity: 0.3,
     };
 
+    let mut mouse_pos = cgmath::Vector2::<f32>::zero();
+
     let mut console = console::Console::new();
     let mut font_size = 20.0;
 
@@ -333,6 +335,10 @@ fn main() {
                             }
                             WindowEvent::Focused(state) => {
                                 window_has_focus = state;
+                            }
+                            WindowEvent::CursorMoved { position: (x, y), .. } => {
+                                mouse_pos.x = x as f32;
+                                mouse_pos.y = y as f32;
                             }
                             _ => (),
                         }
@@ -542,7 +548,7 @@ fn main() {
             gl::Disable(gl::DEPTH_TEST);
         }
 
-        post_renderer.render(render_mode as i32, &frustrum);
+        post_renderer.render(render_mode as i32, &frustrum, &viewport, mouse_pos);
 
         // obj
         let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {

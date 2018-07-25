@@ -12,6 +12,8 @@ struct Frustrum {
 uniform sampler2D color_texture;
 uniform sampler2D depth_stencil_texture;
 uniform Frustrum frustrum;
+uniform vec2 viewport;
+uniform vec2 mouse_pos;
 uniform int mode;
 
 in vec2 fs_tex_pos;
