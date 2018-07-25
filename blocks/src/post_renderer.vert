@@ -25,7 +25,7 @@ void main() {
   gl_Position = vec4(vs_ver_pos, 0.0, 1.0);
   fs_tex_pos = vs_tex_pos;
   fs_ray = vec2(
-    linmap(vs_ver_pos.x, -1.0, 1.0, frustrum.x0, frustrum.x1),
-    linmap(vs_ver_pos.y, -1.0, 1.0, frustrum.y0, frustrum.y1)
+    linmap(vs_tex_pos.x, 0.0, 1.0, frustrum.x0, frustrum.x1),
+    linmap(vs_tex_pos.y, 1.0, 0.0, frustrum.y0, frustrum.y1)
   );
 }
