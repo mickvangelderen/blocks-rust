@@ -21,28 +21,33 @@ in vec2 fs_ray;
 
 out vec4 color;
 
-float z_from_ndc_to_eye_space(float z_ndc) {
-  return (2.0*frustrum.z1*frustrum.z0)/(z_ndc*(frustrum.z1 - frustrum.z0) - (frustrum.z1 + frustrum.z0));
-}
-
 float linmap(float x, float x0, float x1, float y0, float y1) {
   return ((x - x0)*y1 + (x1 - x)*y0)/(x1 - x0);
+}
+
+float sample_z_ndc(vec2 tex_pos) {
+  return texture(depth_stencil_texture, tex_pos).r * 2.0 - 1.0;
+}
+
+float z_from_ndc_to_cam_space(float z_ndc) {
+  return (2.0*frustrum.z1*frustrum.z0) /
+    (z_ndc*(frustrum.z1 - frustrum.z0) - (frustrum.z1 + frustrum.z0));
 }
 
 void main() {
   if (mode == 0) {
     color = texture(color_texture, fs_tex_pos);
   } else if (mode == 1) {
-    float z_ndc = texture(depth_stencil_texture, fs_tex_pos).r * 2.0 - 1.0;
-    float z_eye = z_from_ndc_to_eye_space(z_ndc);
-    float d = linmap(z_eye, -frustrum.z0, -frustrum.z1, 1.0, 0.0);
+    float z_ndc = sample_z_ndc(fs_tex_pos);
+    float z_cam = z_from_ndc_to_cam_space(z_ndc);
+    float d = linmap(z_cam, -frustrum.z0, -frustrum.z1, 1.0, 0.0);
     color = vec4(vec3(d), 1.0);
   } else {
-    float z_ndc = texture(depth_stencil_texture, fs_tex_pos).r * 2.0 - 1.0;
-    float z_eye = z_from_ndc_to_eye_space(z_ndc);
-    vec3 pos_eye = vec3(fs_ray*z_eye, z_eye);
+    float z_ndc = sample_z_ndc(fs_tex_pos);
+    float z_cam = z_from_ndc_to_cam_space(z_ndc);
+    vec3 pos_cam = vec3(fs_ray*z_cam, z_cam);
     color = texture(color_texture, fs_tex_pos);
-    if (pos_eye.x > -0.5 && pos_eye.x < 0.5 && pos_eye.z < frustrum.z1) {
+    if (pos_cam.x > -0.5 && pos_cam.x < 0.5 && pos_cam.z < frustrum.z1) {
       color = vec4(1.0, 0.0, 0.0, 1.0);
     }
   }
