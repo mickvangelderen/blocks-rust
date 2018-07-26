@@ -10,7 +10,14 @@ use texture_parameter::*;
 use texture_target::*;
 use texture_unit::*;
 use uniform_location::*;
+use attribute_location::*;
 use vertex_array_name::*;
+use std::ffi::CStr;
+
+#[inline]
+pub unsafe fn get_attrib_location(program: &LinkedProgramName, name: &CStr) -> Option<AttributeLocation> {
+    AttributeLocation::new(program, name)
+}
 
 #[inline]
 pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {

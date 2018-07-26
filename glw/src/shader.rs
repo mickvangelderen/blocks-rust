@@ -5,23 +5,24 @@ use shader_kind::ShaderKind;
 #[derive(Debug)]
 pub struct ShaderName(Name);
 
-#[derive(Debug, Clone)]
-pub struct CompilationFailed(String);
+// TODO: Remove CompilationFailed, doesn't add any value, just complexity.
+// #[derive(Debug, Clone)]
+// pub struct CompilationFailed(String);
 
-use std::error;
-use std::fmt;
+// use std::error;
+// use std::fmt;
 
-impl fmt::Display for CompilationFailed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
+// impl fmt::Display for CompilationFailed {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "{}", self.0)
+//     }
+// }
 
-impl error::Error for CompilationFailed {
-    fn description(&self) -> &str {
-        &self.0
-    }
-}
+// impl error::Error for CompilationFailed {
+//     fn description(&self) -> &str {
+//         &self.0
+//     }
+// }
 
 impl ShaderName {
     #[inline]
@@ -34,7 +35,7 @@ impl ShaderName {
         self.0.get()
     }
 
-    pub fn compile(self, sources: &[&str]) -> Result<CompiledShaderName, CompilationFailed> {
+    pub fn compile(self, sources: &[&str]) -> Result<CompiledShaderName, (ShaderName, String)> {
         let source_lengths: Vec<i32> = sources.iter().map(|source| source.len() as i32).collect();
 
         unsafe {
@@ -75,7 +76,8 @@ impl ShaderName {
                 buffer
             };
 
-            Err(CompilationFailed(
+            Err((
+                self,
                 String::from_utf8(buffer).expect("Shader info log is not utf8"),
             ))
         } else {
@@ -103,10 +105,19 @@ impl CompiledShaderName {
     }
 }
 
+// Temporarily discard the compiled state.
 impl AsRef<ShaderName> for CompiledShaderName {
     #[inline]
     fn as_ref(&self) -> &ShaderName {
         &self.0
+    }
+}
+
+// Permanently discard the compiled state for re-use.
+impl From<CompiledShaderName> for ShaderName {
+    #[inline]
+    fn from(name: CompiledShaderName) -> Self {
+        name.0
     }
 }
 
@@ -130,11 +141,15 @@ macro_rules! impl_shader_kind {
             pub fn compile(
                 self,
                 sources: &[&str],
-            ) -> Result<$CompiledKindShaderName, CompilationFailed> {
-                self.0.compile(sources).map($CompiledKindShaderName)
+            ) -> Result<$CompiledKindShaderName, ($KindShaderName, String)> {
+                self.0
+                    .compile(sources)
+                    .map($CompiledKindShaderName)
+                    .map_err(|(name, err)| ($KindShaderName(name), err))
             }
         }
 
+        // Temporarily discard the kind.
         impl AsRef<ShaderName> for $KindShaderName {
             #[inline]
             fn as_ref(&self) -> &ShaderName {
@@ -142,8 +157,17 @@ macro_rules! impl_shader_kind {
             }
         }
 
+        // Permanently discard the kind.
+        impl From<$KindShaderName> for ShaderName {
+            #[inline]
+            fn from(name: $KindShaderName) -> Self {
+                name.0
+            }
+        }
+
         pub struct $CompiledKindShaderName(CompiledShaderName);
 
+        // Temporarily discard the kind.
         impl AsRef<CompiledShaderName> for $CompiledKindShaderName {
             #[inline]
             fn as_ref(&self) -> &CompiledShaderName {
@@ -151,10 +175,33 @@ macro_rules! impl_shader_kind {
             }
         }
 
-        impl AsRef<ShaderName> for $CompiledKindShaderName {
+        // Permanently discard the kind.
+        impl From<$CompiledKindShaderName> for CompiledShaderName {
             #[inline]
-            fn as_ref(&self) -> &ShaderName {
-                self.0.as_ref()
+            fn from(name: $CompiledKindShaderName) -> Self {
+                name.0
+            }
+        }
+
+        // Temporarily discard the compiled state.
+        impl AsRef<$KindShaderName> for $CompiledKindShaderName {
+            #[inline]
+            fn as_ref(&self) -> &$KindShaderName {
+                // TODO: Figure out if this is our only option if we
+                // want to be able to discard both the kind and the
+                // compile state, since we need to store either
+                // $CompiledKindShaderName($KindShaderName) or
+                // $CompiledKindShaderName(CompiledShaderName).
+                // Perhaps it is better to not provide this at all.
+                unsafe { &*(self as *const $CompiledKindShaderName as *const $KindShaderName) }
+            }
+        }
+
+        // Permanently discard the compiled state for re-use.
+        impl From<$CompiledKindShaderName> for $KindShaderName {
+            #[inline]
+            fn from(name: $CompiledKindShaderName) -> Self {
+                $KindShaderName(From::from(name.0))
             }
         }
     };

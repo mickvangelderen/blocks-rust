@@ -1,4 +1,5 @@
-use assets;
+use assets::file_to_string;
+use assets::Assets;
 use cgmath::*;
 use cgmath_ext::*;
 use gl;
@@ -135,21 +136,21 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new() -> Self {
+    pub fn new(assets: &mut Assets) -> Self {
         let program_name = glw::ProgramName::new()
             .unwrap()
             .link(&[
                 glw::VertexShaderName::new()
                     .unwrap()
-                    .compile(&[include_str!("text_renderer.vert")])
-                    .unwrap_or_else(|err| {
+                    .compile(&[&file_to_string(assets.get_path("text_renderer.vert")).unwrap()])
+                    .unwrap_or_else(|(_, err)| {
                         panic!("\ntext_renderer.vert:\n{}", err);
                     })
                     .as_ref(),
                 glw::FragmentShaderName::new()
                     .unwrap()
-                    .compile(&[include_str!("text_renderer.frag")])
-                    .unwrap_or_else(|err| {
+                    .compile(&[&file_to_string(assets.get_path("text_renderer.frag")).unwrap()])
+                    .unwrap_or_else(|(_, err)| {
                         panic!("\ntext_renderer.frag:\n{}", err);
                     })
                     .as_ref(),
@@ -157,25 +158,20 @@ impl TextRenderer {
             .unwrap();
 
         macro_rules! get_uniform_loc {
-            ($type: ty, $identifier: tt) => {
+            ($type:ty, $identifier:tt) => {
                 glw::UniformLocation::<$type>::new(&program_name, static_cstr!($identifier))
                     .unwrap_or_else(|| {
                         panic!("Failed to get uniform location {:?}", $identifier);
                     })
-            }
+            };
         }
 
-        let program_font_texture_loc = unsafe {
-            get_uniform_loc!(i32, "font_texture")
-        };
+        let program_font_texture_loc = unsafe { get_uniform_loc!(i32, "font_texture") };
 
-        let program_pos_from_wld_to_clp_space_loc = unsafe {
-            get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space")
-        };
+        let program_pos_from_wld_to_clp_space_loc =
+            unsafe { get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space") };
 
-        let program_font_size_loc = unsafe {
-            get_uniform_loc!(f32, "font_size")
-        };
+        let program_font_size_loc = unsafe { get_uniform_loc!(f32, "font_size") };
 
         let vertex_array_name =
             unsafe { glw::VertexArrayName::new().expect("Failed to create vertex array.") };
@@ -307,7 +303,7 @@ impl TextRenderer {
             glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
 
             {
-                let img = image::open(assets::get_asset_path("font-padded-sdf.png")).unwrap();
+                let img = image::open(assets.get_path("font-padded-sdf.png")).unwrap();
                 let img = img.flipv().to_rgba();
                 gl::TexImage2D(
                     gl::TEXTURE_2D,                                // target

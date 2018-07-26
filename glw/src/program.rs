@@ -14,7 +14,7 @@ impl ProgramName {
         (self.0).get()
     }
 
-    pub fn link(self, shaders: &[&CompiledShaderName]) -> Result<LinkedProgramName, String> {
+    pub fn link(self, shaders: &[&CompiledShaderName]) -> Result<LinkedProgramName, (ProgramName, String)> {
         for shader in shaders {
             unsafe {
                 gl::AttachShader(self.as_u32(), shader.as_u32());
@@ -55,7 +55,7 @@ impl ProgramName {
                 buffer
             };
 
-            Err(String::from_utf8(buffer).expect("Program info log is not utf8"))
+            Err((self, String::from_utf8(buffer).expect("Program info log is not utf8")))
         }
     }
 }
@@ -74,6 +74,13 @@ pub struct LinkedProgramName(ProgramName);
 impl LinkedProgramName {
     pub unsafe fn as_u32(&self) -> u32 {
         self.0.as_u32()
+    }
+}
+
+// Permanently discard linked state.
+impl From<LinkedProgramName> for ProgramName {
+    fn from(name: LinkedProgramName) -> Self {
+        name.0
     }
 }
 

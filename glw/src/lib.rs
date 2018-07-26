@@ -3,6 +3,7 @@
 extern crate core;
 extern crate gl;
 
+mod attribute_location;
 mod buffer_name;
 mod buffer_target;
 mod framebuffer_attachment;
@@ -23,11 +24,13 @@ mod texture_wrap;
 mod uniform_location;
 mod vertex_array_name;
 mod viewport;
+mod num;
 
 // Can't auto sort bc macro import order important.
 #[macro_use]
 pub mod string;
 
+pub use self::attribute_location::*;
 pub use self::buffer_name::*;
 pub use self::buffer_target::*;
 pub use self::framebuffer_attachment::*;
@@ -48,3 +51,4 @@ pub use self::texture_wrap::*;
 pub use self::uniform_location::*;
 pub use self::vertex_array_name::*;
 pub use self::viewport::*;
+pub use self::num::*;

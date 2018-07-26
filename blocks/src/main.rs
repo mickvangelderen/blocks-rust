@@ -16,6 +16,7 @@ extern crate glutin;
 #[macro_use]
 extern crate glw;
 extern crate image;
+extern crate notify;
 
 pub mod assets;
 pub mod frustrum;
@@ -41,6 +42,8 @@ use post_renderer::PostRenderer;
 use std::{thread, time};
 use text_renderer::TextRenderer;
 use frustrum::Frustrum;
+use std::path::PathBuf;
+use std::env;
 
 fn main() {
     let mut chunk = Chunk {
@@ -84,8 +87,12 @@ fn main() {
 
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
-    let chunk_renderer = ChunkRenderer::new();
-    let text_renderer = TextRenderer::new();
+    let mut assets = assets::Assets::new(
+        env::var_os("BLOCKS_ASSET_DIR").map_or_else(|| PathBuf::from("assets"), PathBuf::from)
+    );
+
+    let mut chunk_renderer = ChunkRenderer::new(&mut assets);
+    let mut text_renderer = TextRenderer::new(&mut assets);
 
     let mut should_stop = false;
     let mut window_has_focus = false;
@@ -238,7 +245,7 @@ fn main() {
         name
     };
 
-    let post_renderer = PostRenderer::new(&color_texture_name, &depth_stencil_texture_name);
+    let post_renderer = PostRenderer::new(&mut assets, &color_texture_name, &depth_stencil_texture_name);
 
     while !should_stop {
         let now = time::Instant::now();

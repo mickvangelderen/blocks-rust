@@ -1,3 +1,5 @@
+use assets::file_to_string;
+use assets::Assets;
 use cgmath::*;
 use gl;
 use glw;
@@ -57,6 +59,7 @@ pub struct PostRenderer<'a> {
 
 impl<'a> PostRenderer<'a> {
     pub fn new(
+        assets: &mut Assets,
         color_texture_name: &'a glw::TextureName,
         depth_stencil_texture_name: &'a glw::TextureName,
     ) -> Self {
@@ -65,15 +68,15 @@ impl<'a> PostRenderer<'a> {
             .link(&[
                 glw::VertexShaderName::new()
                     .unwrap()
-                    .compile(&[include_str!("post_renderer.vert")])
-                    .unwrap_or_else(|err| {
+                    .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
+                    .unwrap_or_else(|(_, err)| {
                         panic!("\npost_renderer.vert:\n{}", err);
                     })
                     .as_ref(),
                 glw::FragmentShaderName::new()
                     .unwrap()
-                    .compile(&[include_str!("post_renderer.frag")])
-                    .unwrap_or_else(|err| {
+                    .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
+                    .unwrap_or_else(|(_, err)| {
                         panic!("\npost_renderer.frag:\n{}", err);
                     })
                     .as_ref(),
@@ -203,7 +206,13 @@ impl<'a> PostRenderer<'a> {
         }
     }
 
-    pub fn render(&self, mode: i32, frustrum: &Frustrum, viewport: &glw::Viewport, mouse: Vector2<f32>) {
+    pub fn render(
+        &self,
+        mode: i32,
+        frustrum: &Frustrum,
+        viewport: &glw::Viewport,
+        mouse: Vector2<f32>,
+    ) {
         unsafe {
             glw::use_program(&self.program_name);
 
