@@ -495,7 +495,7 @@ fn main() {
             ups = ups_counter.update();
         }
 
-        // Don't put any updates after this or we will miss them.
+        // Don't put any update code after this.
         if next_update < next_render {
             thread::sleep(next_update - now);
             continue;
