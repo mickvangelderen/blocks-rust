@@ -298,7 +298,7 @@ impl ChunkRenderer {
 
             // TODO: use 3d texture and lookup in shader
             glw::active_texture(glw::TEXTURE0);
-            glw::bind_texture(glw::TEXTURE_2D, &self.texture_atlas_name);
+            glw::bind_texture(glw::TEXTURE_2D_ARRAY, &self.texture_atlas_name);
 
             gl::DrawElementsInstanced(
                 gl::TRIANGLES,                         // mode
