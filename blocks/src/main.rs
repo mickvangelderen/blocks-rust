@@ -100,10 +100,9 @@ fn main() {
     let mut should_stop = false;
     let mut window_has_focus = false;
     let mut console_has_focus = false;
-    let mut current_dpi_factor = gl_window.window().get_hidpi_factor();
-    let mut current_width = 0.0;
-    let mut current_height = 0.0;
-    let mut current_fullscreen = false;
+    let mut dpi_factor = gl_window.window().get_hidpi_factor();
+    let mut window_size = glutin::dpi::PhysicalSize::new(0.0, 0.0);
+    let mut is_fullscreen = false;
 
     let mut input_forward = glutin::ElementState::Released;
     let mut input_backward = glutin::ElementState::Released;
@@ -259,12 +258,8 @@ fn main() {
         let now = time::Instant::now();
 
         while next_update < now {
-            let mut new_dpi_factor = current_dpi_factor;
-            let mut new_logical_size = glutin::dpi::LogicalSize::from_physical(
-                (current_width, current_height),
-                current_dpi_factor,
-            );
-            let mut new_fullscreen = current_fullscreen;
+            let mut new_fullscreen = is_fullscreen;
+            let mut new_window_size = window_size;
             let mut mouse_dx = 0.0;
             let mut mouse_dy = 0.0;
             let mut mouse_dscroll = 0.0;
@@ -277,11 +272,14 @@ fn main() {
                         use glutin::WindowEvent;
                         match event {
                             WindowEvent::CloseRequested => should_stop = true,
-                            WindowEvent::HiDpiFactorChanged(dpi_factor) => {
-                                new_dpi_factor = dpi_factor;
+                            WindowEvent::HiDpiFactorChanged(new_dpi_factor) => {
+                                dpi_factor = new_dpi_factor;
                             }
-                            WindowEvent::Resized(logical_size) => {
-                                new_logical_size = logical_size;
+                            WindowEvent::Resized(size) => {
+                                // NOTE: Assume order of events is
+                                // conserved and dpi_factor is the
+                                // current right value.
+                                new_window_size = size.to_physical(dpi_factor);
                             }
                             WindowEvent::KeyboardInput { input, .. } => {
                                 use glutin::VirtualKeyCode;
@@ -357,6 +355,7 @@ fn main() {
                                 window_has_focus = state;
                             }
                             WindowEvent::CursorMoved { position, .. } => {
+                                let position = position.to_physical(dpi_factor);
                                 mouse_pos.x = position.x as f32;
                                 mouse_pos.y = position.y as f32;
                             }
@@ -465,43 +464,25 @@ fn main() {
             }
 
             // Update render buffer sizes and stuff.
-            if new_fullscreen != current_fullscreen {
-                current_fullscreen = new_fullscreen;
-                gl_window.set_fullscreen(if current_fullscreen {
+            if new_fullscreen != is_fullscreen {
+                is_fullscreen = new_fullscreen;
+                gl_window.set_fullscreen(if is_fullscreen {
                     Some(gl_window.get_current_monitor())
                 } else {
                     None
                 });
             }
 
-            let mut should_resize = false;
 
-            if new_dpi_factor != current_dpi_factor {
-                current_dpi_factor = new_dpi_factor;
-                should_resize = true;
-            }
+            if new_window_size != window_size {
+                window_size = new_window_size;
 
-            let new_physical_size = new_logical_size.to_physical(new_dpi_factor);
+                gl_window.resize(window_size);
 
-            if new_physical_size.width != current_width {
-                current_width = new_physical_size.width;
-                should_resize = true;
-            }
-
-            if new_physical_size.height != current_height {
-                current_height = new_physical_size.height;
-                should_resize = true;
-            }
-
-            if should_resize {
-                gl_window.resize(glutin::dpi::PhysicalSize::new(
-                    current_width,
-                    current_height,
-                ));
                 viewport
                     .update()
-                    .width(current_width as i32)
-                    .height(current_height as i32);
+                    .width(window_size.width.round() as i32)
+                    .height(window_size.height.round() as i32);
 
                 // Update framebuffer texture sizes.
                 unsafe {
