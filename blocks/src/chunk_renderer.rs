@@ -268,11 +268,17 @@ impl ChunkRenderer {
                                 );
 
                             // Set texture sampler uniform.
-                            let texture_atlas_loc = glw::UniformLocation::<i32>::new(
+                            match glw::UniformLocation::<i32>::new(
                                 &program_name,
                                 static_cstr!("texture_atlas"),
-                            ).unwrap();
-                            texture_atlas_loc.set(0);
+                            ) {
+                                Some(texture_atlas_loc) => {
+                                    texture_atlas_loc.set(0);
+                                },
+                                None => {
+                                    eprintln!("Could not find uniform \"texture_atlas\".");
+                                }
+                            }
 
                             // Bind the program.
                             glw::use_program(&program_name);
