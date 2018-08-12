@@ -19,7 +19,6 @@ extern crate image;
 extern crate notify;
 
 pub mod assets;
-pub mod frustrum;
 pub mod block;
 pub mod camera;
 pub mod cgmath_ext;
@@ -27,6 +26,7 @@ pub mod chunk;
 pub mod chunk_renderer;
 pub mod console;
 pub mod cube;
+pub mod frustrum;
 pub mod post_renderer;
 pub mod rate_counter;
 pub mod text_renderer;
@@ -37,13 +37,13 @@ use chunk::Chunk;
 use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk_renderer::ChunkRenderer;
+use frustrum::Frustrum;
 use glutin::GlContext;
 use post_renderer::PostRenderer;
+use std::env;
+use std::path::PathBuf;
 use std::{thread, time};
 use text_renderer::TextRenderer;
-use frustrum::Frustrum;
-use std::path::PathBuf;
-use std::env;
 
 fn main() {
     let mut chunk = Chunk {
@@ -72,7 +72,10 @@ fn main() {
     let gl_window = glutin::GlWindow::new(
         glutin::WindowBuilder::new()
             .with_title(format!("{} {}", env!("CARGO_PKG_NAME"), env!("GIT_HASH")))
-            .with_dimensions(viewport.width() as u32, viewport.height() as u32),
+            .with_dimensions(glutin::dpi::LogicalSize::new(
+                viewport.width() as f64,
+                viewport.height() as f64,
+            )),
         glutin::ContextBuilder::new()
             .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 0)))
             .with_gl_profile(glutin::GlProfile::Core)
@@ -88,7 +91,7 @@ fn main() {
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
     let mut assets = assets::Assets::new(
-        env::var_os("BLOCKS_ASSET_DIR").map_or_else(|| PathBuf::from("assets"), PathBuf::from)
+        env::var_os("BLOCKS_ASSET_DIR").map_or_else(|| PathBuf::from("assets"), PathBuf::from),
     );
 
     let mut chunk_renderer = ChunkRenderer::new(&mut assets);
@@ -97,8 +100,9 @@ fn main() {
     let mut should_stop = false;
     let mut window_has_focus = false;
     let mut console_has_focus = false;
-    let mut current_width = 0;
-    let mut current_height = 0;
+    let mut current_dpi_factor = gl_window.window().get_hidpi_factor();
+    let mut current_width = 0.0;
+    let mut current_height = 0.0;
     let mut current_fullscreen = false;
 
     let mut input_forward = glutin::ElementState::Released;
@@ -245,14 +249,21 @@ fn main() {
         name
     };
 
-    let post_renderer = PostRenderer::new(&mut assets, &color_texture_name, &depth_stencil_texture_name);
+    let post_renderer = PostRenderer::new(
+        &mut assets,
+        &color_texture_name,
+        &depth_stencil_texture_name,
+    );
 
     while !should_stop {
         let now = time::Instant::now();
 
         while next_update < now {
-            let mut new_width = current_width;
-            let mut new_height = current_height;
+            let mut new_dpi_factor = current_dpi_factor;
+            let mut new_logical_size = glutin::dpi::LogicalSize::from_physical(
+                (current_width, current_height),
+                current_dpi_factor,
+            );
             let mut new_fullscreen = current_fullscreen;
             let mut mouse_dx = 0.0;
             let mut mouse_dy = 0.0;
@@ -266,9 +277,11 @@ fn main() {
                         use glutin::WindowEvent;
                         match event {
                             WindowEvent::CloseRequested => should_stop = true,
-                            WindowEvent::Resized(width, height) => {
-                                new_width = width;
-                                new_height = height;
+                            WindowEvent::HiDpiFactorChanged(dpi_factor) => {
+                                new_dpi_factor = dpi_factor;
+                            }
+                            WindowEvent::Resized(logical_size) => {
+                                new_logical_size = logical_size;
                             }
                             WindowEvent::KeyboardInput { input, .. } => {
                                 use glutin::VirtualKeyCode;
@@ -343,9 +356,9 @@ fn main() {
                             WindowEvent::Focused(state) => {
                                 window_has_focus = state;
                             }
-                            WindowEvent::CursorMoved { position: (x, y), .. } => {
-                                mouse_pos.x = x as f32;
-                                mouse_pos.y = y as f32;
+                            WindowEvent::CursorMoved { position, .. } => {
+                                mouse_pos.x = position.x as f32;
+                                mouse_pos.y = position.y as f32;
                             }
                             _ => (),
                         }
@@ -461,10 +474,30 @@ fn main() {
                 });
             }
 
-            if new_width != current_width || new_height != current_height {
-                current_width = new_width;
-                current_height = new_height;
-                gl_window.resize(current_width, current_height);
+            let mut should_resize = false;
+
+            if new_dpi_factor != current_dpi_factor {
+                current_dpi_factor = new_dpi_factor;
+                should_resize = true;
+            }
+
+            let new_physical_size = new_logical_size.to_physical(new_dpi_factor);
+
+            if new_physical_size.width != current_width {
+                current_width = new_physical_size.width;
+                should_resize = true;
+            }
+
+            if new_physical_size.height != current_height {
+                current_height = new_physical_size.height;
+                should_resize = true;
+            }
+
+            if should_resize {
+                gl_window.resize(glutin::dpi::PhysicalSize::new(
+                    current_width,
+                    current_height,
+                ));
                 viewport
                     .update()
                     .width(current_width as i32)
