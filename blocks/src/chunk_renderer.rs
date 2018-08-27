@@ -267,6 +267,9 @@ impl ChunkRenderer {
                                     static_cstr!("pos_from_wld_to_clp_space"),
                                 );
 
+                            // Bind the program.
+                            glw::use_program(&program_name);
+
                             // Set texture sampler uniform.
                             match glw::UniformLocation::<i32>::new(
                                 &program_name,
@@ -279,9 +282,6 @@ impl ChunkRenderer {
                                     eprintln!("Could not find uniform \"texture_atlas\".");
                                 }
                             }
-
-                            // Bind the program.
-                            glw::use_program(&program_name);
 
                             // Set up the vertex array object.
                             {
