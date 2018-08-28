@@ -13,6 +13,7 @@ pub const READ_FRAMEBUFFER: FramebufferTarget = FramebufferTarget::ReadFramebuff
 pub const FRAMEBUFFER: FramebufferTarget = FramebufferTarget::Framebuffer;
 
 impl FramebufferTarget {
+    #[inline]
     pub fn as_u32(&self) -> u32 {
         *self as u32
     }
