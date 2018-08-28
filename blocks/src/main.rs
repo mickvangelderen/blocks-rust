@@ -7,7 +7,6 @@ paint blocks
 /*
 x, y, z
  */
-#![feature(duration_extras)]
 
 extern crate cgmath;
 extern crate core;
