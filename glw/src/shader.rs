@@ -35,34 +35,39 @@ impl ShaderName {
         self.0.get()
     }
 
-    pub fn compile(self, sources: &[&str]) -> Result<CompiledShaderName, (ShaderName, String)> {
+    pub unsafe fn compile(
+        self,
+        sources: &[&str],
+    ) -> Result<CompiledShaderName, (ShaderName, String)> {
+        // NOTE: Const generics please.
         let source_lengths: Vec<i32> = sources.iter().map(|source| source.len() as i32).collect();
 
-        unsafe {
-            gl::ShaderSource(
-                self.as_u32(),
-                sources.len() as i32,
-                sources.as_ptr() as *const *const i8,
-                source_lengths.as_ptr(),
-            );
-            gl::CompileShader(self.as_u32());
-        }
+        gl::ShaderSource(
+            self.as_u32(),
+            sources.len() as i32,
+            sources.as_ptr() as *const *const i8,
+            source_lengths.as_ptr(),
+        );
 
-        let status = unsafe {
+        gl::CompileShader(self.as_u32());
+
+        let status = {
             let mut status = ::std::mem::uninitialized();
             gl::GetShaderiv(self.as_u32(), gl::COMPILE_STATUS, &mut status);
             status
         };
 
-        if status != (gl::TRUE as i32) {
-            let capacity = unsafe {
+        if status == (gl::TRUE as i32) {
+            Ok(CompiledShaderName(self))
+        } else {
+            let capacity = {
                 let mut capacity: i32 = ::std::mem::uninitialized();
                 gl::GetShaderiv(self.as_u32(), gl::INFO_LOG_LENGTH, &mut capacity);
                 assert!(capacity >= 0);
                 capacity
             };
 
-            let buffer = unsafe {
+            let buffer = {
                 let mut buffer: Vec<u8> = Vec::with_capacity(capacity as usize);
                 let mut length: i32 = ::std::mem::uninitialized();
                 gl::GetShaderInfoLog(
@@ -80,8 +85,6 @@ impl ShaderName {
                 self,
                 String::from_utf8(buffer).expect("Shader info log is not utf8"),
             ))
-        } else {
-            Ok(CompiledShaderName(self))
         }
     }
 }
@@ -138,7 +141,7 @@ macro_rules! impl_shader_kind {
             }
 
             #[inline]
-            pub fn compile(
+            pub unsafe fn compile(
                 self,
                 sources: &[&str],
             ) -> Result<$CompiledKindShaderName, ($KindShaderName, String)> {

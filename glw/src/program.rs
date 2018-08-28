@@ -14,18 +14,14 @@ impl ProgramName {
         (self.0).get()
     }
 
-    pub fn link(self, shaders: &[&CompiledShaderName]) -> Result<LinkedProgramName, (ProgramName, String)> {
+    pub unsafe fn link(self, shaders: &[&CompiledShaderName]) -> Result<LinkedProgramName, (ProgramName, String)> {
         for shader in shaders {
-            unsafe {
-                gl::AttachShader(self.as_u32(), shader.as_u32());
-            }
+            gl::AttachShader(self.as_u32(), shader.as_u32());
         }
 
-        unsafe {
-            gl::LinkProgram(self.as_u32());
-        }
+        gl::LinkProgram(self.as_u32());
 
-        let status = unsafe {
+        let status = {
             let mut status: i32 = ::std::mem::uninitialized();
             gl::GetProgramiv(self.as_u32(), gl::LINK_STATUS, &mut status);
             status
@@ -34,14 +30,14 @@ impl ProgramName {
         if status == (gl::TRUE as i32) {
             Ok(LinkedProgramName(self))
         } else {
-            let capacity = unsafe {
+            let capacity = {
                 let mut capacity: i32 = ::std::mem::uninitialized();
                 gl::GetProgramiv(self.as_u32(), gl::INFO_LOG_LENGTH, &mut capacity);
                 assert!(capacity >= 0);
                 capacity
             };
 
-            let buffer = unsafe {
+            let buffer = {
                 let mut buffer: Vec<u8> = Vec::with_capacity(capacity as usize);
                 let mut length: i32 = ::std::mem::uninitialized();
                 gl::GetProgramInfoLog(

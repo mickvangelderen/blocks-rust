@@ -30,7 +30,7 @@ impl Viewport {
     }
 
     #[inline]
-    pub fn update(&mut self) -> ViewportUpdate {
+    pub unsafe fn update(&mut self) -> ViewportUpdate {
         ViewportUpdate(self)
     }
 
