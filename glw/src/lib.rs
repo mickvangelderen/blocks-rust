@@ -1,5 +1,3 @@
-#![feature(nonzero)]
-
 extern crate core;
 extern crate gl;
 
