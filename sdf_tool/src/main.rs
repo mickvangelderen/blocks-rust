@@ -62,10 +62,8 @@ fn main() {
                 let other_outside: bool =
                     unsafe { img_pad.unsafe_get_pixel((x + dx) as u32, (y + dy) as u32)[3] < 128 };
 
-                if outside != other_outside {
-                    if d_sq < closest_d_sq {
-                        closest_d_sq = d_sq;
-                    }
+                if outside != other_outside && d_sq < closest_d_sq {
+                    closest_d_sq = d_sq;
                 }
             }
         }
