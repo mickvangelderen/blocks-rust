@@ -119,6 +119,30 @@ pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
     gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
+#[inline]
+/// Drops all previous names before querying new ones.
+pub unsafe fn gen_buffers_with_drop(names: &mut [Option<BufferName>]) {
+    for name in names.iter_mut() {
+        ::std::mem::drop(name.take());
+    }
+    gen_buffers(names);
+}
+
+#[inline]
+/// Careful, does not drop the values. Call ::std::mem::forget afterwards.
+pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
+    gl::DeleteBuffers(names.len() as i32, names as *const _ as *const u32);
+}
+
+#[inline]
+/// Drops all names after deleting them.
+pub unsafe fn delete_buffers_with_drop(names: &mut [Option<BufferName>]) {
+    delete_buffers(names);
+    for name in names.iter_mut() {
+        ::std::mem::forget(name.take());
+    }
+}
+
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {

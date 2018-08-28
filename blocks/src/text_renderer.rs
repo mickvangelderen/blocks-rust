@@ -6,8 +6,6 @@ use gl;
 use glw;
 use image;
 
-use glw::BufferNameArray;
-
 struct Vertex {
     #[allow(unused)]
     ver_pos: Vector3<f32>,
@@ -130,8 +128,10 @@ pub struct TextRenderer {
     program_font_size_loc: glw::UniformLocation<f32>,
     texture_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
-    _vertex_buffer_name: glw::BufferName,
-    _element_buffer_name: glw::BufferName,
+    #[allow(unused)]
+    vertex_buffer_name: glw::BufferName,
+    #[allow(unused)]
+    element_buffer_name: glw::BufferName,
     character_buffer_name: glw::BufferName,
 }
 
@@ -146,14 +146,17 @@ impl TextRenderer {
                         .compile(&[&file_to_string(assets.get_path("text_renderer.vert")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\ntext_renderer.vert:\n{}", err);
-                        }).as_ref(),
+                        })
+                        .as_ref(),
                     glw::FragmentShaderName::new()
                         .unwrap()
                         .compile(&[&file_to_string(assets.get_path("text_renderer.frag")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\ntext_renderer.frag:\n{}", err);
-                        }).as_ref(),
-                ]).unwrap();
+                        })
+                        .as_ref(),
+                ])
+                .unwrap();
 
             macro_rules! get_uniform_loc {
                 ($type:ty, $identifier:tt) => {
@@ -174,12 +177,15 @@ impl TextRenderer {
             let vertex_array_name =
                 glw::VertexArrayName::new().expect("Failed to create vertex array.");
 
-            let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
-                <[Option<glw::BufferName>; 3]>::new();
-
-            let vertex_buffer_name = vertex_buffer_name.unwrap();
-            let element_buffer_name = element_buffer_name.unwrap();
-            let character_buffer_name = character_buffer_name.unwrap();
+            let [vertex_buffer_name, element_buffer_name, character_buffer_name] = {
+                let mut names: [Option<glw::BufferName>; 3] = Default::default();
+                glw::gen_buffers(&mut names);
+                [
+                    names[0].take().unwrap(),
+                    names[1].take().unwrap(),
+                    names[2].take().unwrap(),
+                ]
+            };
 
             glw::use_program(&program_name);
 
@@ -326,8 +332,8 @@ impl TextRenderer {
                 program_font_size_loc,
                 texture_name,
                 vertex_array_name,
-                _vertex_buffer_name: vertex_buffer_name,
-                _element_buffer_name: element_buffer_name,
+                vertex_buffer_name,
+                element_buffer_name,
                 character_buffer_name,
             }
         }
@@ -418,5 +424,21 @@ impl TextRenderer {
                 character_data.len() as i32,        // primitive count
             );
         }
+    }
+
+    pub unsafe fn delete(self) {
+        let TextRenderer {
+            vertex_buffer_name,
+            element_buffer_name,
+            character_buffer_name,
+            ..
+        } = self;
+        let mut buffer_names = [
+            Some(vertex_buffer_name),
+            Some(element_buffer_name),
+            Some(character_buffer_name),
+        ];
+        glw::delete_buffers(&mut buffer_names);
+        ::std::mem::forget(buffer_names);
     }
 }

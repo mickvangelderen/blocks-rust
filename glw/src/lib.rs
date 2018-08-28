@@ -1,5 +1,8 @@
+#![feature(const_fn)]
+
 extern crate core;
 extern crate gl;
+#[macro_use] extern crate prevent_drop;
 
 mod attribute_location;
 mod buffer_name;

@@ -625,6 +625,12 @@ fn main() {
         next_render = time::Instant::now()
             + time::Duration::from_nanos((1000_000_000f64 / DESIRED_FPS) as u64);
     }
+
+    unsafe {
+        chunk_renderer.delete();
+        post_renderer.delete();
+        text_renderer.delete();
+    }
 }
 
 #[cfg(test)]

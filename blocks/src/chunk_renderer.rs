@@ -63,6 +63,17 @@ impl ChunkRenderer {
             let fragment_shader_path = assets.get_path(FRAGMENT_SHADER_PATH);
             let dirt_image_path = assets.get_path(DIRT_IMAGE_PATH);
             let stone_image_path = assets.get_path(STONE_IMAGE_PATH);
+
+            let [vertex_buffer_name, element_buffer_name, block_buffer_name] = {
+                let mut names: [Option<glw::BufferName>; 3] = Default::default();
+                glw::gen_buffers(&mut names);
+                [
+                    names[0].take().unwrap(),
+                    names[1].take().unwrap(),
+                    names[2].take().unwrap(),
+                ]
+            };
+
             let r = ChunkRenderer {
                 vertex_shader_modified: assets.get_modified(&vertex_shader_path),
                 vertex_shader_path,
@@ -78,9 +89,9 @@ impl ChunkRenderer {
                 pos_from_wld_to_clp_space_loc: None,
                 texture_atlas_name: glw::TextureName::new().unwrap(),
                 vertex_array_name: glw::VertexArrayName::new().unwrap(),
-                vertex_buffer_name: glw::BufferName::new().unwrap(),
-                element_buffer_name: glw::BufferName::new().unwrap(),
-                block_buffer_name: glw::BufferName::new().unwrap(),
+                vertex_buffer_name,
+                element_buffer_name,
+                block_buffer_name,
             };
 
             glw::bind_vertex_array(&r.vertex_array_name);
@@ -204,7 +215,8 @@ impl ChunkRenderer {
                     VertexShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledVertexShaderName| name.into()),
-                }.unwrap();
+                }
+                .unwrap();
 
                 self.vertex_shader_name = name
                     .compile(&[&source])
@@ -224,7 +236,8 @@ impl ChunkRenderer {
                     FragmentShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledFragmentShaderName| name.into()),
-                }.unwrap();
+                }
+                .unwrap();
 
                 self.fragment_shader_name = name
                     .compile(&[&source])
@@ -248,7 +261,8 @@ impl ChunkRenderer {
                             Program::Linked(ref mut name) => {
                                 name.take().map(|name: glw::LinkedProgramName| name.into())
                             }
-                        }.unwrap();
+                        }
+                        .unwrap();
 
                         // Link the new program.
                         self.program_name = program_name
@@ -277,7 +291,7 @@ impl ChunkRenderer {
                             ) {
                                 Some(texture_atlas_loc) => {
                                     texture_atlas_loc.set(0);
-                                },
+                                }
                                 None => {
                                     eprintln!("Could not find uniform \"texture_atlas\".");
                                 }
@@ -365,7 +379,10 @@ impl ChunkRenderer {
                                 }
 
                                 // Bind the element array buffer.
-                                glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &self.element_buffer_name);
+                                glw::bind_buffer(
+                                    glw::ELEMENT_ARRAY_BUFFER,
+                                    &self.element_buffer_name,
+                                );
                             }
                         }
                     }
@@ -499,5 +516,21 @@ impl ChunkRenderer {
                 }
             }
         }
+    }
+
+    pub unsafe fn delete(self) {
+        let ChunkRenderer {
+            vertex_buffer_name,
+            element_buffer_name,
+            block_buffer_name,
+            ..
+        } = self;
+        let mut buffer_names = [
+            Some(vertex_buffer_name),
+            Some(element_buffer_name),
+            Some(block_buffer_name),
+        ];
+        glw::delete_buffers(&mut buffer_names);
+        ::std::mem::forget(buffer_names);
     }
 }

@@ -5,7 +5,6 @@ use gl;
 use glw;
 
 use frustrum::Frustrum;
-use glw::BufferNameArray;
 
 struct Vertex {
     #[allow(unused)]
@@ -53,8 +52,10 @@ pub struct PostRenderer<'a> {
     color_texture_name: &'a glw::TextureName,
     depth_stencil_texture_name: &'a glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
-    _vertex_buffer_name: glw::BufferName,
-    _element_buffer_name: glw::BufferName,
+    #[allow(unused)]
+    vertex_buffer_name: glw::BufferName,
+    #[allow(unused)]
+    element_buffer_name: glw::BufferName,
 }
 
 impl<'a> PostRenderer<'a> {
@@ -72,22 +73,26 @@ impl<'a> PostRenderer<'a> {
                         .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\npost_renderer.vert:\n{}", err);
-                        }).as_ref(),
+                        })
+                        .as_ref(),
                     glw::FragmentShaderName::new()
                         .unwrap()
                         .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\npost_renderer.frag:\n{}", err);
-                        }).as_ref(),
-                ]).unwrap();
+                        })
+                        .as_ref(),
+                ])
+                .unwrap();
 
             let vertex_array_name =
                 glw::VertexArrayName::new().expect("Failed to create vertex array.");
 
-            let [vertex_buffer_name, element_buffer_name] = <[Option<glw::BufferName>; 2]>::new();
-
-            let vertex_buffer_name = vertex_buffer_name.unwrap();
-            let element_buffer_name = element_buffer_name.unwrap();
+            let [vertex_buffer_name, element_buffer_name] = {
+                let mut names: [Option<glw::BufferName>; 2] = ::std::mem::uninitialized();
+                glw::gen_buffers(&mut names);
+                [names[0].take().unwrap(), names[1].take().unwrap()]
+            };
 
             let mode_loc;
             let frustrum_x0_loc;
@@ -196,8 +201,8 @@ impl<'a> PostRenderer<'a> {
                 color_texture_name,
                 depth_stencil_texture_name,
                 vertex_array_name,
-                _vertex_buffer_name: vertex_buffer_name,
-                _element_buffer_name: element_buffer_name,
+                vertex_buffer_name,
+                element_buffer_name,
             }
         }
     }
@@ -263,5 +268,16 @@ impl<'a> PostRenderer<'a> {
                 0 as *const ::std::os::raw::c_void, // offset
             );
         }
+    }
+
+    pub unsafe fn delete(self) {
+        let PostRenderer {
+            vertex_buffer_name,
+            element_buffer_name,
+            ..
+        } = self;
+        let mut buffer_names = [Some(vertex_buffer_name), Some(element_buffer_name)];
+        glw::delete_buffers(&mut buffer_names);
+        ::std::mem::forget(buffer_names);
     }
 }
