@@ -1,5 +1,6 @@
 use gl;
 
+#[derive(Clone, Copy, Eq, PartialEq)]
 #[repr(u32)]
 pub enum BufferTarget {
     ArrayBuffer = gl::ARRAY_BUFFER,
@@ -32,3 +33,10 @@ pub const SHADER_STORAGE_BUFFER: BufferTarget = BufferTarget::ShaderStorageBuffe
 pub const TEXTURE_BUFFER: BufferTarget = BufferTarget::TextureBuffer;
 pub const TRANSFORM_FEEDBACK_BUFFER: BufferTarget = BufferTarget::TransformFeedbackBuffer;
 pub const UNIFORM_BUFFER: BufferTarget = BufferTarget::UniformBuffer;
+
+impl BufferTarget {
+    #[inline]
+    pub fn as_u32(&self) -> u32 {
+        *self as u32
+    }
+}
