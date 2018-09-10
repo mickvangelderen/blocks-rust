@@ -63,46 +63,42 @@ impl<'a> PostRenderer<'a> {
         color_texture_name: &'a glw::TextureName,
         depth_stencil_texture_name: &'a glw::TextureName,
     ) -> Self {
-        let program_name = glw::ProgramName::new()
-            .unwrap()
-            .link(&[
-                glw::VertexShaderName::new()
-                    .unwrap()
-                    .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
-                    .unwrap_or_else(|(_, err)| {
-                        panic!("\npost_renderer.vert:\n{}", err);
-                    })
-                    .as_ref(),
-                glw::FragmentShaderName::new()
-                    .unwrap()
-                    .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
-                    .unwrap_or_else(|(_, err)| {
-                        panic!("\npost_renderer.frag:\n{}", err);
-                    })
-                    .as_ref(),
-            ])
-            .unwrap();
-
-        let vertex_array_name =
-            unsafe { glw::VertexArrayName::new().expect("Failed to create vertex array.") };
-
-        let [vertex_buffer_name, element_buffer_name] =
-            unsafe { <[Option<glw::BufferName>; 2]>::new() };
-
-        let vertex_buffer_name = vertex_buffer_name.unwrap();
-        let element_buffer_name = element_buffer_name.unwrap();
-
-        let mode_loc;
-        let frustrum_x0_loc;
-        let frustrum_x1_loc;
-        let frustrum_y0_loc;
-        let frustrum_y1_loc;
-        let frustrum_z0_loc;
-        let frustrum_z1_loc;
-        let viewport_loc;
-        let mouse_pos_loc;
-
         unsafe {
+            let program_name = glw::ProgramName::new()
+                .unwrap()
+                .link(&[
+                    glw::VertexShaderName::new()
+                        .unwrap()
+                        .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
+                        .unwrap_or_else(|(_, err)| {
+                            panic!("\npost_renderer.vert:\n{}", err);
+                        }).as_ref(),
+                    glw::FragmentShaderName::new()
+                        .unwrap()
+                        .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
+                        .unwrap_or_else(|(_, err)| {
+                            panic!("\npost_renderer.frag:\n{}", err);
+                        }).as_ref(),
+                ]).unwrap();
+
+            let vertex_array_name =
+                glw::VertexArrayName::new().expect("Failed to create vertex array.");
+
+            let [vertex_buffer_name, element_buffer_name] = <[Option<glw::BufferName>; 2]>::new();
+
+            let vertex_buffer_name = vertex_buffer_name.unwrap();
+            let element_buffer_name = element_buffer_name.unwrap();
+
+            let mode_loc;
+            let frustrum_x0_loc;
+            let frustrum_x1_loc;
+            let frustrum_y0_loc;
+            let frustrum_y1_loc;
+            let frustrum_z0_loc;
+            let frustrum_z1_loc;
+            let viewport_loc;
+            let mouse_pos_loc;
+
             glw::use_program(&program_name);
 
             if let Some(color_texture_loc) =
@@ -185,24 +181,24 @@ impl<'a> PostRenderer<'a> {
                 ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
                 gl::STATIC_DRAW,
             );
-        }
 
-        PostRenderer {
-            program_name,
-            mode_loc,
-            frustrum_x0_loc,
-            frustrum_x1_loc,
-            frustrum_y0_loc,
-            frustrum_y1_loc,
-            frustrum_z0_loc,
-            frustrum_z1_loc,
-            mouse_pos_loc,
-            viewport_loc,
-            color_texture_name,
-            depth_stencil_texture_name,
-            vertex_array_name,
-            _vertex_buffer_name: vertex_buffer_name,
-            _element_buffer_name: element_buffer_name,
+            PostRenderer {
+                program_name,
+                mode_loc,
+                frustrum_x0_loc,
+                frustrum_x1_loc,
+                frustrum_y0_loc,
+                frustrum_y1_loc,
+                frustrum_z0_loc,
+                frustrum_z1_loc,
+                mouse_pos_loc,
+                viewport_loc,
+                color_texture_name,
+                depth_stencil_texture_name,
+                vertex_array_name,
+                _vertex_buffer_name: vertex_buffer_name,
+                _element_buffer_name: element_buffer_name,
+            }
         }
     }
 

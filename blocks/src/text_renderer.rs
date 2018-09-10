@@ -137,53 +137,50 @@ pub struct TextRenderer {
 
 impl TextRenderer {
     pub fn new(assets: &mut Assets) -> Self {
-        let program_name = glw::ProgramName::new()
-            .unwrap()
-            .link(&[
-                glw::VertexShaderName::new()
-                    .unwrap()
-                    .compile(&[&file_to_string(assets.get_path("text_renderer.vert")).unwrap()])
-                    .unwrap_or_else(|(_, err)| {
-                        panic!("\ntext_renderer.vert:\n{}", err);
-                    })
-                    .as_ref(),
-                glw::FragmentShaderName::new()
-                    .unwrap()
-                    .compile(&[&file_to_string(assets.get_path("text_renderer.frag")).unwrap()])
-                    .unwrap_or_else(|(_, err)| {
-                        panic!("\ntext_renderer.frag:\n{}", err);
-                    })
-                    .as_ref(),
-            ])
-            .unwrap();
-
-        macro_rules! get_uniform_loc {
-            ($type:ty, $identifier:tt) => {
-                glw::UniformLocation::<$type>::new(&program_name, static_cstr!($identifier))
-                    .unwrap_or_else(|| {
-                        panic!("Failed to get uniform location {:?}", $identifier);
-                    })
-            };
-        }
-
-        let program_font_texture_loc = unsafe { get_uniform_loc!(i32, "font_texture") };
-
-        let program_pos_from_wld_to_clp_space_loc =
-            unsafe { get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space") };
-
-        let program_font_size_loc = unsafe { get_uniform_loc!(f32, "font_size") };
-
-        let vertex_array_name =
-            unsafe { glw::VertexArrayName::new().expect("Failed to create vertex array.") };
-
-        let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
-            unsafe { <[Option<glw::BufferName>; 3]>::new() };
-
-        let vertex_buffer_name = vertex_buffer_name.unwrap();
-        let element_buffer_name = element_buffer_name.unwrap();
-        let character_buffer_name = character_buffer_name.unwrap();
-
         unsafe {
+            let program_name = glw::ProgramName::new()
+                .unwrap()
+                .link(&[
+                    glw::VertexShaderName::new()
+                        .unwrap()
+                        .compile(&[&file_to_string(assets.get_path("text_renderer.vert")).unwrap()])
+                        .unwrap_or_else(|(_, err)| {
+                            panic!("\ntext_renderer.vert:\n{}", err);
+                        }).as_ref(),
+                    glw::FragmentShaderName::new()
+                        .unwrap()
+                        .compile(&[&file_to_string(assets.get_path("text_renderer.frag")).unwrap()])
+                        .unwrap_or_else(|(_, err)| {
+                            panic!("\ntext_renderer.frag:\n{}", err);
+                        }).as_ref(),
+                ]).unwrap();
+
+            macro_rules! get_uniform_loc {
+                ($type:ty, $identifier:tt) => {
+                    glw::UniformLocation::<$type>::new(&program_name, static_cstr!($identifier))
+                        .unwrap_or_else(|| {
+                            panic!("Failed to get uniform location {:?}", $identifier);
+                        })
+                };
+            }
+
+            let program_font_texture_loc = get_uniform_loc!(i32, "font_texture");
+
+            let program_pos_from_wld_to_clp_space_loc =
+                get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space");
+
+            let program_font_size_loc = get_uniform_loc!(f32, "font_size");
+
+            let vertex_array_name =
+                glw::VertexArrayName::new().expect("Failed to create vertex array.");
+
+            let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
+                <[Option<glw::BufferName>; 3]>::new();
+
+            let vertex_buffer_name = vertex_buffer_name.unwrap();
+            let element_buffer_name = element_buffer_name.unwrap();
+            let character_buffer_name = character_buffer_name.unwrap();
+
             glw::use_program(&program_name);
 
             program_font_texture_loc.set(0);
@@ -282,57 +279,57 @@ impl TextRenderer {
                 ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
                 gl::STATIC_DRAW,
             );
-        }
 
-        let texture_name: glw::TextureName = unsafe {
-            let name = glw::TextureName::new().unwrap();
+            let texture_name: glw::TextureName = {
+                let name = glw::TextureName::new().unwrap();
 
-            glw::bind_texture(glw::TEXTURE_2D, &name);
+                glw::bind_texture(glw::TEXTURE_2D, &name);
 
-            glw::tex_parameter_i(
-                glw::TEXTURE_2D,
-                glw::TEXTURE_MIN_FILTER,
-                glw::LINEAR_MIPMAP_LINEAR,
-            );
-            glw::tex_parameter_i(
-                glw::TEXTURE_2D,
-                glw::TEXTURE_MAG_FILTER,
-                glw::LINEAR_MIPMAP_LINEAR,
-            );
-            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
-            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
-
-            {
-                let img = image::open(assets.get_path("font-padded-sdf.png")).unwrap();
-                let img = img.flipv().to_rgba();
-                gl::TexImage2D(
-                    gl::TEXTURE_2D,                                // target
-                    0,                                             // mipmap level
-                    gl::RGBA8 as i32,                              // internal format
-                    img.width() as i32,                            // width
-                    img.height() as i32,                           // height
-                    0,                                             // border (must be 0)
-                    gl::RGBA,                                      // format
-                    gl::UNSIGNED_BYTE,                             // type
-                    img.as_ptr() as *const ::std::os::raw::c_void, // data
+                glw::tex_parameter_i(
+                    glw::TEXTURE_2D,
+                    glw::TEXTURE_MIN_FILTER,
+                    glw::LINEAR_MIPMAP_LINEAR,
                 );
+                glw::tex_parameter_i(
+                    glw::TEXTURE_2D,
+                    glw::TEXTURE_MAG_FILTER,
+                    glw::LINEAR_MIPMAP_LINEAR,
+                );
+                glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
+                glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
+
+                {
+                    let img = image::open(assets.get_path("font-padded-sdf.png")).unwrap();
+                    let img = img.flipv().to_rgba();
+                    gl::TexImage2D(
+                        gl::TEXTURE_2D,                                // target
+                        0,                                             // mipmap level
+                        gl::RGBA8 as i32,                              // internal format
+                        img.width() as i32,                            // width
+                        img.height() as i32,                           // height
+                        0,                                             // border (must be 0)
+                        gl::RGBA,                                      // format
+                        gl::UNSIGNED_BYTE,                             // type
+                        img.as_ptr() as *const ::std::os::raw::c_void, // data
+                    );
+                }
+
+                glw::generate_mipmap(glw::TEXTURE_2D);
+
+                name
+            };
+
+            TextRenderer {
+                program_name,
+                _program_font_texture_loc: program_font_texture_loc,
+                program_pos_from_wld_to_clp_space_loc,
+                program_font_size_loc,
+                texture_name,
+                vertex_array_name,
+                _vertex_buffer_name: vertex_buffer_name,
+                _element_buffer_name: element_buffer_name,
+                character_buffer_name,
             }
-
-            glw::generate_mipmap(glw::TEXTURE_2D);
-
-            name
-        };
-
-        TextRenderer {
-            program_name,
-            _program_font_texture_loc: program_font_texture_loc,
-            program_pos_from_wld_to_clp_space_loc,
-            program_font_size_loc,
-            texture_name,
-            vertex_array_name,
-            _vertex_buffer_name: vertex_buffer_name,
-            _element_buffer_name: element_buffer_name,
-            character_buffer_name,
         }
     }
 

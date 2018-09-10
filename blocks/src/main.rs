@@ -478,10 +478,12 @@ fn main() {
 
                 gl_window.resize(window_size);
 
-                viewport
-                    .update()
-                    .width(window_size.width.round() as i32)
-                    .height(window_size.height.round() as i32);
+                unsafe {
+                    viewport
+                        .update()
+                        .width(window_size.width.round() as i32)
+                        .height(window_size.height.round() as i32);
+                }
 
                 // Update framebuffer texture sizes.
                 unsafe {
