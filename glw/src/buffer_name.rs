@@ -1,4 +1,3 @@
-use functions;
 use gl;
 use name::Name;
 
@@ -6,9 +5,8 @@ pub struct BufferName(Name);
 
 impl BufferName {
     #[inline]
-    pub unsafe fn new() -> Option<Self> {
-        let [name]: [Option<BufferName>; 1] = BufferNameArray::new();
-        name
+    pub unsafe fn new(name: u32) -> Option<Self> {
+        Name::new(name).map(BufferName)
     }
 
     #[inline]
@@ -24,32 +22,6 @@ impl Drop for BufferName {
             gl::DeleteBuffers(1, &self.0 as *const Name as *const u32);
         }
     }
-}
-
-pub trait BufferNameArray {
-    unsafe fn new() -> Self;
-}
-
-macro_rules! impl_vertex_buffer_name_array {
-    ($($N:expr)+) => {
-        $(
-            impl BufferNameArray for [Option<BufferName>; $N] {
-                #[inline]
-                unsafe fn new() -> Self {
-                    let mut names: [Option<BufferName>; $N] = ::std::mem::uninitialized();
-                    functions::gen_buffers(&mut names);
-                    names
-                }
-            }
-        )+
-    }
-}
-
-impl_vertex_buffer_name_array! {
-    0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
 }
 
 #[cfg(test)]
