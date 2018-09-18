@@ -110,40 +110,24 @@ pub unsafe fn tex_image_2d(
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_textures(names: &mut [Option<TextureName>]) {
-    assert_eq!(
-        ::std::mem::size_of::<[Option<TextureName>; 2]>(),
-        ::std::mem::size_of::<[u32; 2]>(),
-    );
     gl::GenTextures(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
-    assert_eq!(
-        ::std::mem::size_of::<[Option<BufferName>; 2]>(),
-        ::std::mem::size_of::<[u32; 2]>(),
-    );
     gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
-    assert_eq!(
-        ::std::mem::size_of::<[Option<VertexArrayName>; 2]>(),
-        ::std::mem::size_of::<[u32; 2]>(),
-    );
     gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
-    assert_eq!(
-        ::std::mem::size_of::<[Option<FramebufferName>; 2]>(),
-        ::std::mem::size_of::<[u32; 2]>(),
-    );
     gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
