@@ -278,6 +278,5 @@ impl<'a> PostRenderer<'a> {
         } = self;
         let mut buffer_names = [Some(vertex_buffer_name), Some(element_buffer_name)];
         glw::delete_buffers(&mut buffer_names);
-        ::std::mem::forget(buffer_names);
     }
 }

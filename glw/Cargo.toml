@@ -16,4 +16,4 @@ prevent_drop = { path = "../../prevent_drop" }
 [dev-dependencies]
 glutin = "0.18.0"
 lazy_static = "1.0.0"
-# prevent_drop = { path = "../../prevent_drop", features = [ "panic" ] }
+prevent_drop = { path = "../../prevent_drop", features = [ "panic" ] }

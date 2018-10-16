@@ -531,6 +531,5 @@ impl ChunkRenderer {
             Some(block_buffer_name),
         ];
         glw::delete_buffers(&mut buffer_names);
-        ::std::mem::forget(buffer_names);
     }
 }

@@ -439,6 +439,5 @@ impl TextRenderer {
             Some(character_buffer_name),
         ];
         glw::delete_buffers(&mut buffer_names);
-        ::std::mem::forget(buffer_names);
     }
 }
