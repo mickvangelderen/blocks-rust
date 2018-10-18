@@ -1,13 +1,13 @@
 use gl;
-use name::Name;
+use std::num::NonZeroU32;
 use shader::CompiledShaderName;
 
 #[derive(Debug)]
-pub struct ProgramName(Name);
+pub struct ProgramName(NonZeroU32);
 
 impl ProgramName {
     pub fn new() -> Option<Self> {
-        Name::new(unsafe { gl::CreateProgram() }).map(ProgramName)
+        NonZeroU32::new(unsafe { gl::CreateProgram() }).map(ProgramName)
     }
 
     pub unsafe fn as_u32(&self) -> u32 {

@@ -1,9 +1,9 @@
 use gl;
-use name::Name;
 use shader_kind::ShaderKind;
+use std::num::NonZeroU32;
 
 #[derive(Debug)]
-pub struct ShaderName(Name);
+pub struct ShaderName(NonZeroU32);
 
 // TODO: Remove CompilationFailed, doesn't add any value, just complexity.
 // #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ pub struct ShaderName(Name);
 impl ShaderName {
     #[inline]
     fn new(kind: ShaderKind) -> Option<Self> {
-        Name::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
+        NonZeroU32::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
     }
 
     #[inline]

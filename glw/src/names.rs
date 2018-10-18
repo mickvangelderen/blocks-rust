@@ -1,32 +1,77 @@
-use name::Name;
+use std::num::NonZeroU32;
 use std::mem;
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct BufferName(Name);
+macro_rules! impl_names {
+    ($($T:ident),*) => {
+        $(
+            impl_names!(defi @ $T);
+        )*
+    };
+    (defi @ $T:ident) => {
+        #[derive(Debug, Eq, PartialEq)]
+        pub struct $T(NonZeroU32);
 
-impl BufferName {
-    #[inline]
-    pub unsafe fn from_raw(name: u32) -> Option<Self> {
-        Name::new(name).map(BufferName)
-    }
+        impl $T {
+            #[inline]
+            pub unsafe fn from_raw(name: u32) -> Option<Self> {
+                NonZeroU32::new(name).map($T)
+            }
 
-    #[inline]
-    pub const unsafe fn from_raw_unchecked(name: u32) -> Self {
-        BufferName(Name::new_unchecked(name))
-    }
+            #[inline]
+            pub const unsafe fn from_raw_unchecked(name: u32) -> Self {
+                $T(NonZeroU32::new_unchecked(name))
+            }
 
-    #[inline]
-    pub unsafe fn into_raw(self) -> u32 {
-        mem::ManuallyDrop::new(self).as_u32()
-    }
+            #[inline]
+            pub unsafe fn into_raw(self) -> u32 {
+                mem::ManuallyDrop::new(self).as_u32()
+            }
 
+            #[inline]
+            pub fn as_u32(&self) -> u32 {
+                self.0.get()
+            }
+        }
+
+        impl Drop for $T {
+            #[inline]
+            fn drop(&mut self) {
+                ::std::process::abort();
+            }
+        }
+    };
+}
+
+impl_names!(BufferName, FramebufferName, TextureName, VertexArrayName);
+
+pub struct DefaultFramebufferName();
+
+pub const DEFAULT_FRAMEBUFFER_NAME: DefaultFramebufferName = DefaultFramebufferName();
+
+impl DefaultFramebufferName {
     #[inline]
     pub fn as_u32(&self) -> u32 {
-        self.0.get()
+        0
     }
 }
 
-prevent_drop!(BufferName, forgot_to_explicitly_drop_BufferName);
+pub trait MaybeDefaultFramebufferName {
+    fn as_u32(&self) -> u32;
+}
+
+impl MaybeDefaultFramebufferName for DefaultFramebufferName {
+    #[inline]
+    fn as_u32(&self) -> u32 {
+        DefaultFramebufferName::as_u32(self)
+    }
+}
+
+impl MaybeDefaultFramebufferName for FramebufferName {
+    #[inline]
+    fn as_u32(&self) -> u32 {
+        FramebufferName::as_u32(self)
+    }
+}
 
 // pub trait OptionBufferNameArray {
 //     type BufferNameArray;

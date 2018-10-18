@@ -9,7 +9,4 @@ gl = "0.10.0"
 glutin = "0.18.0"
 image = "0.19.0"
 notify = "4.0.3"
-
-[dependencies.glw]
-path = "../glw"
-features = ["prevent_drop_panic"]
+glw = { path = "../glw" }

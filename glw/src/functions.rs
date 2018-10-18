@@ -1,17 +1,5 @@
-use buffer_name::*;
-use buffer_target::*;
-use framebuffer_attachment::*;
-use framebuffer_name::*;
-use framebuffer_target::*;
 use gl;
-use program::*;
-use texture_name::*;
-use texture_parameter::*;
-use texture_target::*;
-use texture_unit::*;
-use uniform_location::*;
-use attribute_location::*;
-use vertex_array_name::*;
+use super::*;
 use std::ffi::CStr;
 
 #[inline]
@@ -122,8 +110,8 @@ pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
     gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
-#[inline]
 ///
+#[inline]
 pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
     gl::DeleteBuffers(names.len() as i32, names.as_ptr() as *const u32);
     for name in names.iter_mut() {
@@ -131,10 +119,24 @@ pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
     }
 }
 
+// NOTE: We do not trust the opengl implementation to overwrite all
+// values, so we initialize the names to Nones. Since the names can't be
+// dropped the process will abort.
 /// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
+    for name in names.iter_mut() {
+        ::std::mem::drop(name.take());
+    }
     gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
+    gl::DeleteVertexArrays(names.len() as i32, names.as_ptr() as *const u32);
+    for name in names.iter_mut() {
+        ::std::mem::forget(name.take());
+    }
 }
 
 /// Careful, simply overwrites {names} and doesn't drop the values.
