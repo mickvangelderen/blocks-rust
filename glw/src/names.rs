@@ -1,13 +1,8 @@
+use std::mem::ManuallyDrop;
 use std::num::NonZeroU32;
-use std::mem;
 
-macro_rules! impl_names {
-    ($($T:ident),*) => {
-        $(
-            impl_names!(defi @ $T);
-        )*
-    };
-    (defi @ $T:ident) => {
+macro_rules! impl_name {
+    ($T:ident) => {
         #[derive(Debug, Eq, PartialEq)]
         pub struct $T(NonZeroU32);
 
@@ -24,7 +19,7 @@ macro_rules! impl_names {
 
             #[inline]
             pub unsafe fn into_raw(self) -> u32 {
-                mem::ManuallyDrop::new(self).as_u32()
+                ManuallyDrop::new(self).as_u32()
             }
 
             #[inline]
@@ -34,15 +29,21 @@ macro_rules! impl_names {
         }
 
         impl Drop for $T {
-            #[inline]
+            #[inline(never)]
+            #[cold]
             fn drop(&mut self) {
-                ::std::process::abort();
+                if ::std::thread::panicking() == false {
+                    ::std::process::abort();
+                }
             }
         }
     };
 }
 
-impl_names!(BufferName, FramebufferName, TextureName, VertexArrayName);
+impl_name!(BufferName);
+impl_name!(FramebufferName);
+impl_name!(TextureName);
+impl_name!(VertexArrayName);
 
 pub struct DefaultFramebufferName();
 
