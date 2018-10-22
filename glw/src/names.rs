@@ -56,7 +56,7 @@ impl DefaultFramebufferName {
     }
 }
 
-pub trait MaybeDefaultFramebufferName {
+pub trait MaybeDefaultFramebufferName: seal::MaybeDefaultFramebufferName {
     fn as_u32(&self) -> u32;
 }
 
@@ -72,6 +72,12 @@ impl MaybeDefaultFramebufferName for FramebufferName {
     fn as_u32(&self) -> u32 {
         FramebufferName::as_u32(self)
     }
+}
+
+mod seal {
+    pub trait MaybeDefaultFramebufferName {}
+    impl MaybeDefaultFramebufferName for super::DefaultFramebufferName {}
+    impl MaybeDefaultFramebufferName for super::FramebufferName {}
 }
 
 // pub trait OptionBufferNameArray {
