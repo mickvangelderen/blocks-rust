@@ -74,6 +74,20 @@ impl ChunkRenderer {
                 ]
             };
 
+            let texture_atlas_name = {
+                let mut names: [_; 1] = Default::default();
+                glw::gen_textures(&mut names);
+                let [n0] = names;
+                n0.unwrap()
+            };
+
+            let vertex_array_name = {
+                let mut names: [_; 1] = Default::default();
+                glw::gen_vertex_arrays(&mut names);
+                let [n0] = names;
+                n0.unwrap()
+            };
+
             let r = ChunkRenderer {
                 vertex_shader_modified: assets.get_modified(&vertex_shader_path),
                 vertex_shader_path,
@@ -87,8 +101,8 @@ impl ChunkRenderer {
                 fragment_shader_name: FragmentShader::Uncompiled(glw::FragmentShaderName::new()),
                 program_name: Program::Unlinked(glw::ProgramName::new()),
                 pos_from_wld_to_clp_space_loc: None,
-                texture_atlas_name: glw::TextureName::new().unwrap(),
-                vertex_array_name: glw::VertexArrayName::new().unwrap(),
+                texture_atlas_name,
+                vertex_array_name,
                 vertex_buffer_name,
                 element_buffer_name,
                 block_buffer_name,
@@ -215,8 +229,7 @@ impl ChunkRenderer {
                     VertexShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledVertexShaderName| name.into()),
-                }
-                .unwrap();
+                }.unwrap();
 
                 self.vertex_shader_name = name
                     .compile(&[&source])
@@ -236,8 +249,7 @@ impl ChunkRenderer {
                     FragmentShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledFragmentShaderName| name.into()),
-                }
-                .unwrap();
+                }.unwrap();
 
                 self.fragment_shader_name = name
                     .compile(&[&source])
@@ -261,8 +273,7 @@ impl ChunkRenderer {
                             Program::Linked(ref mut name) => {
                                 name.take().map(|name: glw::LinkedProgramName| name.into())
                             }
-                        }
-                        .unwrap();
+                        }.unwrap();
 
                         // Link the new program.
                         self.program_name = program_name

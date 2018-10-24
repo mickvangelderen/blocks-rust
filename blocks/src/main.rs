@@ -94,7 +94,7 @@ fn main() {
     );
 
     let mut chunk_renderer = ChunkRenderer::new(&mut assets);
-    let mut text_renderer = TextRenderer::new(&mut assets);
+    let text_renderer = TextRenderer::new(&mut assets);
 
     let mut should_stop = false;
     let mut window_has_focus = false;
@@ -168,7 +168,12 @@ fn main() {
     let mut font_size = 20.0;
 
     let color_texture_name = unsafe {
-        let name = glw::TextureName::new().unwrap();
+        let name = {
+            let mut names: [_; 1] = Default::default();
+            glw::gen_textures(&mut names);
+            let [n0] = names;
+            n0.unwrap()
+        };
 
         glw::bind_texture(glw::TEXTURE_2D, &name);
 
@@ -192,7 +197,12 @@ fn main() {
     };
 
     let depth_stencil_texture_name = unsafe {
-        let name = glw::TextureName::new().unwrap();
+        let name = {
+            let mut names: [_; 1] = Default::default();
+            glw::gen_textures(&mut names);
+            let [n0] = names;
+            n0.unwrap()
+        };
 
         glw::bind_texture(glw::TEXTURE_2D, &name);
 
@@ -216,7 +226,12 @@ fn main() {
     };
 
     let framebuffer_name = unsafe {
-        let name = glw::FramebufferName::new().unwrap();
+        let name = {
+            let mut names: [_; 1] = Default::default();
+            glw::gen_framebuffers(&mut names);
+            let [n0] = names;
+            n0.unwrap()
+        };
 
         glw::bind_framebuffer(glw::FRAMEBUFFER, &name);
 
@@ -471,7 +486,6 @@ fn main() {
                     None
                 });
             }
-
 
             if new_window_size != window_size {
                 window_size = new_window_size;

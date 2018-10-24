@@ -174,16 +174,23 @@ impl TextRenderer {
 
             let program_font_size_loc = get_uniform_loc!(f32, "font_size");
 
-            let vertex_array_name =
-                glw::VertexArrayName::new().expect("Failed to create vertex array.");
+            let vertex_array_name = {
+                let mut names: [_; 1] = Default::default();
+                glw::gen_vertex_arrays(&mut names);
+                let [ n0 ] = names;
+                n0.unwrap()
+            };
 
             let [vertex_buffer_name, element_buffer_name, character_buffer_name] = {
-                let mut names: [Option<glw::BufferName>; 3] = Default::default();
-                glw::gen_buffers(&mut names);
+                let [ n0, n1, n2 ] = {
+                    let mut names: [_; 3] = Default::default();
+                    glw::gen_buffers(&mut names);
+                    names
+                };
                 [
-                    names[0].take().unwrap(),
-                    names[1].take().unwrap(),
-                    names[2].take().unwrap(),
+                    n0.unwrap(),
+                    n1.unwrap(),
+                    n2.unwrap(),
                 ]
             };
 
@@ -287,7 +294,12 @@ impl TextRenderer {
             );
 
             let texture_name: glw::TextureName = {
-                let name = glw::TextureName::new().unwrap();
+                let name = {
+                    let mut names: [_; 1] = Default::default();
+                    glw::gen_textures(&mut names);
+                    let [ n0 ] = names;
+                    n0.unwrap()
+                };
 
                 glw::bind_texture(glw::TEXTURE_2D, &name);
 

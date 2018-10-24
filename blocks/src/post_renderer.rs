@@ -73,25 +73,29 @@ impl<'a> PostRenderer<'a> {
                         .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\npost_renderer.vert:\n{}", err);
-                        })
-                        .as_ref(),
+                        }).as_ref(),
                     glw::FragmentShaderName::new()
                         .unwrap()
                         .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
                         .unwrap_or_else(|(_, err)| {
                             panic!("\npost_renderer.frag:\n{}", err);
-                        })
-                        .as_ref(),
-                ])
-                .unwrap();
+                        }).as_ref(),
+                ]).unwrap();
 
-            let vertex_array_name =
-                glw::VertexArrayName::new().expect("Failed to create vertex array.");
+            let vertex_array_name = {
+                let mut names: [_; 1] = Default::default();
+                glw::gen_vertex_arrays(&mut names);
+                let [n0] = names;
+                n0.unwrap()
+            };
 
             let [vertex_buffer_name, element_buffer_name] = {
-                let mut names: [Option<glw::BufferName>; 2] = ::std::mem::uninitialized();
-                glw::gen_buffers(&mut names);
-                [names[0].take().unwrap(), names[1].take().unwrap()]
+                let [n0, n1] = {
+                    let mut names: [_; 2] = Default::default();
+                    glw::gen_buffers(&mut names);
+                    names
+                };
+                [n0.unwrap(), n1.unwrap()]
             };
 
             let mode_loc;
