@@ -95,12 +95,25 @@ pub unsafe fn tex_image_2d(
     );
 }
 
-/// Careful, simply overwrites {names} and doesn't drop the values.
+// NOTE: We do not trust the opengl implementation to overwrite all
+// values, so we initialize the names to Nones. Since the names can't be
+// dropped the process will abort.
+
 #[inline]
 pub unsafe fn gen_textures(names: &mut [Option<TextureName>]) {
+    for name in names.iter_mut() {
+        ::std::mem::drop(name.take());
+    }
     gl::GenTextures(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
+#[inline]
+pub unsafe fn delete_textures(names: &mut [Option<TextureName>]) {
+    gl::DeleteTextures(names.len() as i32, names.as_ptr() as *const u32);
+    for name in names.iter_mut() {
+        ::std::mem::forget(name.take());
+    }
+}
 
 #[inline]
 pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
@@ -110,7 +123,6 @@ pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
     gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
 }
 
-///
 #[inline]
 pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
     gl::DeleteBuffers(names.len() as i32, names.as_ptr() as *const u32);
@@ -119,10 +131,6 @@ pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
     }
 }
 
-// NOTE: We do not trust the opengl implementation to overwrite all
-// values, so we initialize the names to Nones. Since the names can't be
-// dropped the process will abort.
-/// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
     for name in names.iter_mut() {
@@ -139,10 +147,20 @@ pub unsafe fn delete_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
     }
 }
 
-/// Careful, simply overwrites {names} and doesn't drop the values.
 #[inline]
 pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
+    for name in names.iter_mut() {
+        ::std::mem::drop(name.take());
+    }
     gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_framebuffers(names: &mut [Option<FramebufferName>]) {
+    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+    for name in names.iter_mut() {
+        ::std::mem::forget(name.take());
+    }
 }
 
 #[inline]

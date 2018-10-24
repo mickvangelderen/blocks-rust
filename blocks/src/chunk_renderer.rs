@@ -531,16 +531,28 @@ impl ChunkRenderer {
 
     pub unsafe fn delete(self) {
         let ChunkRenderer {
+            texture_atlas_name,
+            vertex_array_name,
             vertex_buffer_name,
             element_buffer_name,
             block_buffer_name,
             ..
         } = self;
-        let mut buffer_names = [
-            Some(vertex_buffer_name),
-            Some(element_buffer_name),
-            Some(block_buffer_name),
-        ];
-        glw::delete_buffers(&mut buffer_names);
+        {
+            let mut names = [ Some(texture_atlas_name) ];
+            glw::delete_textures(&mut names);
+        }
+        {
+            let mut names = [ Some(vertex_array_name) ];
+            glw::delete_vertex_arrays(&mut names);
+        }
+        {
+            let mut names = [
+                Some(vertex_buffer_name),
+                Some(element_buffer_name),
+                Some(block_buffer_name),
+            ];
+            glw::delete_buffers(&mut names);
+        }
     }
 }

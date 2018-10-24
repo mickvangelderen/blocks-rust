@@ -1,3 +1,5 @@
+#![feature(nll)]
+
 /*
 render block world
 flying camera
@@ -644,6 +646,16 @@ fn main() {
         chunk_renderer.delete();
         post_renderer.delete();
         text_renderer.delete();
+
+        {
+            let mut names = [ Some(color_texture_name), Some(depth_stencil_texture_name) ];
+            glw::delete_textures(&mut names);
+        }
+
+        {
+            let mut names = [ Some(framebuffer_name) ];
+            glw::delete_framebuffers(&mut names);
+        }
     }
 }
 

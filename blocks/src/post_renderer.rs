@@ -49,8 +49,8 @@ pub struct PostRenderer<'a> {
     frustrum_z1_loc: Option<glw::UniformLocation<f32>>,
     mouse_pos_loc: Option<glw::UniformLocation<[f32; 2]>>,
     viewport_loc: Option<glw::UniformLocation<[f32; 2]>>,
-    color_texture_name: &'a glw::TextureName,
-    depth_stencil_texture_name: &'a glw::TextureName,
+    color_texture_name: glw::SmallRef<'a, glw::TextureName>,
+    depth_stencil_texture_name: glw::SmallRef<'a, glw::TextureName>,
     vertex_array_name: glw::VertexArrayName,
     #[allow(unused)]
     vertex_buffer_name: glw::BufferName,
@@ -202,8 +202,8 @@ impl<'a> PostRenderer<'a> {
                 frustrum_z1_loc,
                 mouse_pos_loc,
                 viewport_loc,
-                color_texture_name,
-                depth_stencil_texture_name,
+                color_texture_name: glw::SmallRef::new(color_texture_name),
+                depth_stencil_texture_name: glw::SmallRef::new(depth_stencil_texture_name),
                 vertex_array_name,
                 vertex_buffer_name,
                 element_buffer_name,
@@ -258,10 +258,10 @@ impl<'a> PostRenderer<'a> {
             }
 
             glw::active_texture(glw::TEXTURE0);
-            glw::bind_texture(glw::TEXTURE_2D, self.color_texture_name);
+            glw::bind_texture(glw::TEXTURE_2D, &*self.color_texture_name);
 
             glw::active_texture(glw::TEXTURE1);
-            glw::bind_texture(glw::TEXTURE_2D, self.depth_stencil_texture_name);
+            glw::bind_texture(glw::TEXTURE_2D, &*self.depth_stencil_texture_name);
 
             glw::bind_vertex_array(&self.vertex_array_name);
 
@@ -276,11 +276,18 @@ impl<'a> PostRenderer<'a> {
 
     pub unsafe fn delete(self) {
         let PostRenderer {
+            vertex_array_name,
             vertex_buffer_name,
             element_buffer_name,
             ..
         } = self;
-        let mut buffer_names = [Some(vertex_buffer_name), Some(element_buffer_name)];
-        glw::delete_buffers(&mut buffer_names);
+        {
+            let mut names = [Some(vertex_array_name)];
+            glw::delete_vertex_arrays(&mut names);
+        }
+        {
+            let mut names = [Some(vertex_buffer_name), Some(element_buffer_name)];
+            glw::delete_buffers(&mut names);
+        }
     }
 }
