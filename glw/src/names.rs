@@ -1,5 +1,6 @@
 use std::mem::ManuallyDrop;
 use std::num::NonZeroU32;
+use small_ref;
 
 macro_rules! impl_name {
     ($T:ident) => {
@@ -36,6 +37,11 @@ macro_rules! impl_name {
                     ::std::process::abort();
                 }
             }
+        }
+
+        // Promise every NonZeroU32 is a valid $T and vice versa.
+        unsafe impl small_ref::Raw for $T {
+            type Raw = NonZeroU32;
         }
     };
 }
@@ -130,6 +136,10 @@ mod seal {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::small_ref;
+
+    type BufferNameRef<'a> = small_ref::SmallRef<'a, BufferName>;
+
     use std::mem;
 
     #[test]
@@ -146,6 +156,33 @@ mod tests {
                 mem::transmute::<Option<BufferName>, u32>(BufferName::from_raw(1)),
                 1
             );
+        }
+    }
+
+    #[test]
+    fn option_buffer_name_ref_is_a_u32() {
+        // Assert size.
+        let _ = mem::transmute::<Option<BufferNameRef>, u32>;
+
+        unsafe {
+            let b1 = BufferName::from_raw(1).unwrap();
+
+            {
+                // Can create multiple references.
+                let b1r1 = BufferNameRef::new(&b1);
+                let b1r2 = BufferNameRef::new(&b1);
+
+                // Can copy references.
+                let b1r3 = b1r1;
+                let b1r4 = b1r1;
+
+                assert_eq!(b1r1.as_u32(), 1);
+                assert_eq!(b1r2.as_u32(), 1);
+                assert_eq!(b1r3.as_u32(), 1);
+                assert_eq!(b1r4.as_u32(), 1);
+            }
+
+            ::std::mem::forget(b1);
         }
     }
 }

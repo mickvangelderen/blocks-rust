@@ -1,82 +1,101 @@
 use core::marker::PhantomData;
 use std::ptr;
+use marker::Freeze;
 
 fn phantom_data_from<T>(_: T) -> PhantomData<T> {
     PhantomData
 }
 
-/// Promise that your type has no embedded/interior mutability.
-/// https://users.rust-lang.org/t/references-to-values-smaller-than-references/21448/5
-pub unsafe trait Freeze {}
+/// To enable implementing Copy, we need users of SmallRef to provide a
+/// copyable type that can hold all valid bit patterns of `T`. With the
+/// `Raw` trait we promise that we can take Self, store it in a Raw and
+/// interpret an immutable reference to Raw as an immutable reference to
+/// Self.
+pub unsafe trait Raw: Freeze {
+    type Raw: Freeze + Copy;
+}
 
-pub struct Ref32<'a, T: 'a>
+/// https://users.rust-lang.org/t/references-to-values-smaller-than-references/21448/5
+pub struct SmallRef<'a, T: 'a>
 where
-    T: Freeze,
+    T: Raw,
 {
-    copy: [u8; 4],
+    copy: T::Raw,
     _borrow: PhantomData<&'a T>,
 }
 
-impl<'a, T: 'a> Ref32<'a, T>
+impl<'a, T: 'a> SmallRef<'a, T>
 where
-    T: Freeze,
+    T: Raw,
 {
     #[inline]
     pub fn new(value: &'a T) -> Self {
         use std::mem::size_of;
 
-        assert!(
-            size_of::<T>() == size_of::<[u8; 4]>(),
-            "Ref32 can only be implemented for types that are 32 bits in size."
-        );
+        assert!(size_of::<T>() == size_of::<T::Raw>());
 
         assert!(
             size_of::<T>() < size_of::<&T>(),
-            "Ref32 only makes sense for types smaller than a pointer."
+            "SmallRef only makes sense for types smaller than a pointer."
         );
 
         unsafe {
-            Ref32 {
-                copy: ptr::read(value as *const T as *const [u8; 4]),
+            SmallRef {
+                copy: ptr::read(value as *const T as *const T::Raw),
                 _borrow: phantom_data_from(value),
             }
         }
     }
 }
 
-// NOTE: Won't derive.
-impl<'a, T: 'a> Copy for Ref32<'a, T> where T: Freeze {}
-
-// NOTE: Won't derive.
-impl<'a, T: 'a> Clone for Ref32<'a, T>
+// NOTE: Deriving Clone does not work for all types while it should.
+impl<'a, T: 'a> Clone for SmallRef<'a, T>
 where
-    T: Freeze,
+    T: Raw,
 {
     #[inline]
     fn clone(&self) -> Self {
-        Ref32 {
+        SmallRef {
             copy: self.copy,
             _borrow: self._borrow,
         }
     }
 }
 
-impl<'a, T: 'a> std::ops::Deref for Ref32<'a, T>
+// NOTE: Deriving Copy does not work for all types while it should.
+impl<'a, T: 'a> Copy for SmallRef<'a, T> where T: Raw {}
+
+impl<'a, T: 'a> ::std::borrow::Borrow<T> for SmallRef<'a, T>
 where
-    T: Freeze,
+    T: Raw,
+{
+    #[inline]
+    fn borrow(&self) -> &T {
+        self
+    }
+}
+
+impl<'a, T: 'a> ::std::ops::Deref for SmallRef<'a, T>
+where
+    T: Raw,
 {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &T {
-        unsafe { &*(&self.copy as *const _ as *const T) }
+        // Safe because we
+        // 1. hold an immutable borrow,
+        // 2. Self::Target has no interior mutability, and
+        // 3. all valid bit patterns of T::Raw are valid for T.
+        unsafe { &*(&self.copy as *const T::Raw as *const T) }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Freeze;
-    use super::Ref32;
+    use super::Raw;
+    use super::SmallRef;
 
     struct Resource(u32);
 
@@ -87,18 +106,21 @@ mod tests {
     }
 
     unsafe impl Freeze for Resource {}
+    unsafe impl Raw for Resource {
+        type Raw = u32;
+    }
 
     #[test]
     fn it_is_indeed_smaller() {
         use std::mem::size_of;
 
-        assert!(size_of::<Ref32<Resource>>() < size_of::<&Resource>());
+        assert!(size_of::<SmallRef<Resource>>() < size_of::<&Resource>());
     }
 
     #[test]
-    fn can_copy_ref32() {
+    fn can_copy() {
         let x = Resource(13);
-        let r = Ref32::new(&x);
+        let r = SmallRef::new(&x);
         let r2 = r;
         let r3 = r;
         assert_eq!(r2.as_u32(), 13);
