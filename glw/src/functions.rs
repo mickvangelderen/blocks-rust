@@ -41,6 +41,11 @@ where
 }
 
 #[inline]
+pub unsafe fn check_framebuffer_status(target: FramebufferTarget) -> Option<FramebufferStatus> {
+    FramebufferStatus::from_raw(gl::CheckFramebufferStatus(target.as_u32()))
+}
+
+#[inline]
 pub unsafe fn framebuffer_texture_2d(
     framebuffer_target: FramebufferTarget,
     framebuffer_attachment: FramebufferAttachment,

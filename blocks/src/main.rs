@@ -253,11 +253,11 @@ fn main() {
             0,
         );
 
-        let status = gl::CheckFramebufferStatus(gl::FRAMEBUFFER);
+        let status = glw::check_framebuffer_status(glw::FRAMEBUFFER).unwrap();
 
         assert_eq!(
             status,
-            gl::FRAMEBUFFER_COMPLETE,
+            glw::FRAMEBUFFER_COMPLETE,
             "Expected framebufer to be complete."
         );
 
