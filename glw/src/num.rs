@@ -9,7 +9,7 @@ impl NonMinusOneI32 {
     ///
     /// The value must not be minus one.
     #[inline]
-    pub unsafe fn new_unchecked(n: i32) -> Self {
+    pub const unsafe fn new_unchecked(n: i32) -> Self {
         NonMinusOneI32(NonZeroU32::new_unchecked((n + 1) as u32))
     }
 
@@ -35,7 +35,7 @@ impl NonMinusOneU32 {
     ///
     /// The value must not be minus one.
     #[inline]
-    pub unsafe fn new_unchecked(n: u32) -> Self {
+    pub const unsafe fn new_unchecked(n: u32) -> Self {
         NonMinusOneU32(NonZeroU32::new_unchecked(n.wrapping_add(1)))
     }
 
