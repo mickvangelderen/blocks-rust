@@ -29,7 +29,9 @@ pub mod console;
 pub mod cube;
 pub mod frustrum;
 pub mod post_renderer;
+pub mod program;
 pub mod rate_counter;
+pub mod shader;
 pub mod text_renderer;
 
 use block::Block;

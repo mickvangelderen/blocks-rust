@@ -10,21 +10,8 @@ use cube;
 use gl;
 use glw;
 use image;
-
-pub enum Program {
-    Unlinked(Option<glw::ProgramName>),
-    Linked(Option<glw::LinkedProgramName>),
-}
-
-pub enum VertexShader {
-    Uncompiled(Option<glw::VertexShaderName>),
-    Compiled(Option<glw::CompiledVertexShaderName>),
-}
-
-pub enum FragmentShader {
-    Uncompiled(Option<glw::FragmentShaderName>),
-    Compiled(Option<glw::CompiledFragmentShaderName>),
-}
+use program::*;
+use shader::*;
 
 pub struct ChunkRendererChanges {
     pub vert: bool,
@@ -54,7 +41,7 @@ impl ChunkRendererChanges {
 }
 
 pub struct ChunkRenderer {
-    vertex_shader_name: VertexShader,
+    vertex_shader: VertexShader,
     fragment_shader_name: FragmentShader,
     program_name: Program,
     pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[[f32; 4]; 4]>>,
@@ -162,7 +149,7 @@ impl ChunkRenderer {
         }
 
         let mut renderer = ChunkRenderer {
-            vertex_shader_name: VertexShader::Uncompiled(glw::VertexShaderName::new()),
+            vertex_shader: VertexShader::Uncompiled(glw::VertexShaderName::new()),
             fragment_shader_name: FragmentShader::Uncompiled(glw::FragmentShaderName::new()),
             program_name: Program::Unlinked(glw::ProgramName::new()),
             pos_from_wld_to_clp_space_loc: None,
@@ -180,20 +167,17 @@ impl ChunkRenderer {
 
     pub unsafe fn update(&mut self, assets: &Assets, changes: ChunkRendererChanges) {
         if changes.vert {
-            let source = file_to_string(&assets.chunk_renderer_vert).unwrap();
-            let name: glw::VertexShaderName = match self.vertex_shader_name {
-                VertexShader::Uncompiled(ref mut name) => name.take(),
-                VertexShader::Compiled(ref mut name) => name.take().map(From::from),
+            let file_path = &assets.chunk_renderer_vert;
+            match file_to_string(&file_path) {
+                Ok(source) => {
+                    self.vertex_shader.recompile(source).unwrap_or_else(|err| {
+                        eprintln!("\n{}:\n{}", file_path.display(), err);
+                    });
+                }
+                Err(err) => {
+                    eprintln!("Failed to read {}: {}", file_path.display(), err);
+                }
             }
-            .unwrap();
-
-            self.vertex_shader_name = name
-                .compile(&[&source])
-                .map(|name| VertexShader::Compiled(Some(name)))
-                .unwrap_or_else(|(name, err)| {
-                    eprintln!("\n{}:\n{}", assets.chunk_renderer_vert.display(), err);
-                    VertexShader::Uncompiled(Some(name))
-                });
         }
 
         if changes.frag {
@@ -216,7 +200,7 @@ impl ChunkRenderer {
         }
 
         if changes.vert || changes.frag {
-            if let VertexShader::Compiled(Some(ref vertex_shader_name)) = self.vertex_shader_name {
+            if let VertexShader::Compiled(Some(ref vertex_shader)) = self.vertex_shader {
                 if let FragmentShader::Compiled(Some(ref fragment_shader_name)) =
                     self.fragment_shader_name
                 {
@@ -231,7 +215,7 @@ impl ChunkRenderer {
 
                     // Link the new program.
                     self.program_name = program_name
-                        .link(&[vertex_shader_name.as_ref(), fragment_shader_name.as_ref()])
+                        .link(&[vertex_shader.as_ref(), fragment_shader_name.as_ref()])
                         .map(|program_name| Program::Linked(Some(program_name)))
                         .unwrap_or_else(|(program_name, err)| {
                             eprintln!("\nFailed to link program:\n{}", err);
