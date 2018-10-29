@@ -22,5 +22,5 @@ pub const COMPUTE: ShaderKind = ShaderKind::Compute;
 pub const FRAGMENT: ShaderKind = ShaderKind::Fragment;
 pub const GEOMETRY: ShaderKind = ShaderKind::Geometry;
 pub const VERTEX: ShaderKind = ShaderKind::Vertex;
-pub const TESSELATION_CONTROL: ShaderKind = ShaderKind::TesselationControl;
-pub const TESSELATION_EVALUATION: ShaderKind = ShaderKind::TesselationEvaluation;
+pub const TESS_CONTROL_SHADER: ShaderKind = ShaderKind::TesselationControl;
+pub const TESS_EVALUATION_SHADER: ShaderKind = ShaderKind::TesselationEvaluation;
