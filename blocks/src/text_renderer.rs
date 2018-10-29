@@ -136,23 +136,23 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new(assets: &mut Assets) -> Self {
+    pub fn new(assets: &Assets) -> Self {
         unsafe {
             let program_name = glw::ProgramName::new()
                 .unwrap()
                 .link(&[
                     glw::VertexShaderName::new()
                         .unwrap()
-                        .compile(&[&file_to_string(assets.get_path("text_renderer.vert")).unwrap()])
+                        .compile(&[&file_to_string(&assets.text_renderer_vert).unwrap()])
                         .unwrap_or_else(|(_, err)| {
-                            panic!("\ntext_renderer.vert:\n{}", err);
+                            panic!("\n{}:\n{}", assets.text_renderer_vert.display(), err);
                         })
                         .as_ref(),
                     glw::FragmentShaderName::new()
                         .unwrap()
-                        .compile(&[&file_to_string(assets.get_path("text_renderer.frag")).unwrap()])
+                        .compile(&[&file_to_string(&assets.text_renderer_frag).unwrap()])
                         .unwrap_or_else(|(_, err)| {
-                            panic!("\ntext_renderer.frag:\n{}", err);
+                            panic!("\n{}:\n{}", assets.text_renderer_frag.display(), err);
                         })
                         .as_ref(),
                 ])
@@ -317,7 +317,7 @@ impl TextRenderer {
                 glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
 
                 {
-                    let img = image::open(assets.get_path("font-padded-sdf.png")).unwrap();
+                    let img = image::open(&assets.font_padded_sdf_png).unwrap();
                     let img = img.flipv().to_rgba();
                     gl::TexImage2D(
                         gl::TEXTURE_2D,                                // target

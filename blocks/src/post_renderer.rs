@@ -60,7 +60,7 @@ pub struct PostRenderer<'a> {
 
 impl<'a> PostRenderer<'a> {
     pub fn new(
-        assets: &mut Assets,
+        assets: &Assets,
         color_texture_name: &'a glw::TextureName,
         depth_stencil_texture_name: &'a glw::TextureName,
     ) -> Self {
@@ -70,15 +70,15 @@ impl<'a> PostRenderer<'a> {
                 .link(&[
                     glw::VertexShaderName::new()
                         .unwrap()
-                        .compile(&[&file_to_string(assets.get_path("post_renderer.vert")).unwrap()])
+                        .compile(&[&file_to_string(&assets.post_renderer_vert).unwrap()])
                         .unwrap_or_else(|(_, err)| {
-                            panic!("\npost_renderer.vert:\n{}", err);
+                            panic!("\n{}:\n{}", assets.post_renderer_vert.display(), err);
                         }).as_ref(),
                     glw::FragmentShaderName::new()
                         .unwrap()
-                        .compile(&[&file_to_string(assets.get_path("post_renderer.frag")).unwrap()])
+                        .compile(&[&file_to_string(&assets.post_renderer_frag).unwrap()])
                         .unwrap_or_else(|(_, err)| {
-                            panic!("\npost_renderer.frag:\n{}", err);
+                            panic!("\n{}:\n{}", assets.post_renderer_frag.display(), err);
                         }).as_ref(),
                 ]).unwrap();
 

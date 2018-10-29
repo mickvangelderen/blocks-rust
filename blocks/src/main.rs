@@ -38,11 +38,15 @@ use chunk::Chunk;
 use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk_renderer::ChunkRenderer;
+use chunk_renderer::ChunkRendererChanges;
 use frustrum::Frustrum;
 use glutin::GlContext;
+use notify::Watcher;
 use post_renderer::PostRenderer;
 use std::env;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::time::Duration;
 use std::{thread, time};
 use text_renderer::TextRenderer;
 
@@ -83,7 +87,8 @@ fn main() {
             .with_vsync(true),
         // .with_multisampling(16),
         &events_loop,
-    ).unwrap();
+    )
+    .unwrap();
 
     unsafe {
         gl_window.make_current().unwrap();
@@ -91,12 +96,18 @@ fn main() {
 
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
-    let mut assets = assets::Assets::new(
+    let assets = assets::Assets::new(
         env::var_os("BLOCKS_ASSET_DIR").map_or_else(|| PathBuf::from("assets"), PathBuf::from),
     );
 
-    let mut chunk_renderer = ChunkRenderer::new(&mut assets);
-    let text_renderer = TextRenderer::new(&mut assets);
+    let (file_watcher_tx, file_watcher_rx) = mpsc::channel();
+    let mut file_watcher = notify::watcher(file_watcher_tx, Duration::from_millis(100)).unwrap();
+    file_watcher
+        .watch(&assets.root, notify::RecursiveMode::Recursive)
+        .unwrap();
+
+    let mut chunk_renderer = ChunkRenderer::new(&assets);
+    let text_renderer = TextRenderer::new(&assets);
 
     let mut should_stop = false;
     let mut window_has_focus = false;
@@ -264,11 +275,8 @@ fn main() {
         name
     };
 
-    let post_renderer = PostRenderer::new(
-        &mut assets,
-        &color_texture_name,
-        &depth_stencil_texture_name,
-    );
+    let post_renderer =
+        PostRenderer::new(&assets, &color_texture_name, &depth_stencil_texture_name);
 
     while !should_stop {
         let now = time::Instant::now();
@@ -539,6 +547,63 @@ fn main() {
             continue;
         }
 
+        {
+            let mut chunk_renderer_changes = ChunkRendererChanges::new();
+
+            loop {
+                match file_watcher_rx.try_recv() {
+                    Ok(event) => {
+                        use notify::DebouncedEvent;
+                        match event {
+                            DebouncedEvent::Create(path) | DebouncedEvent::Write(path) => {
+                                println!("File {:?} changed.", path);
+                                if &path == &assets.chunk_renderer_vert {
+                                    chunk_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.chunk_renderer_frag {
+                                    chunk_renderer_changes.frag = true;
+                                }
+                                // if &path == &assets.text_renderer_vert {
+                                //     text_renderer_changes.vert = true;
+                                // }
+                                // if &path == &assets.text_renderer_frag {
+                                //     text_renderer_changes.frag = true;
+                                // }
+                                // if &path == &assets.post_renderer_vert {
+                                //     post_renderer_changes.vert = true;
+                                // }
+                                // if &path == &assets.post_renderer_frag {
+                                //     post_renderer_changes.frag = true;
+                                // }
+                                if &path == &assets.dirt_xyz_png {
+                                    chunk_renderer_changes.dirt = true;
+                                }
+                                if &path == &assets.stone_xyz_png {
+                                    chunk_renderer_changes.stone = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    Err(err) => {
+                        use mpsc::TryRecvError;
+                        match err {
+                            TryRecvError::Empty => {
+                                break;
+                            }
+                            TryRecvError::Disconnected => {
+                                panic!("File watcher disconnected!");
+                            }
+                        }
+                    }
+                }
+            }
+
+            unsafe {
+                chunk_renderer.update(&assets, chunk_renderer_changes);
+            }
+        }
+
         unsafe {
             glw::bind_framebuffer(glw::FRAMEBUFFER, &framebuffer_name);
 
@@ -648,12 +713,12 @@ fn main() {
         text_renderer.delete();
 
         {
-            let mut names = [ Some(color_texture_name), Some(depth_stencil_texture_name) ];
+            let mut names = [Some(color_texture_name), Some(depth_stencil_texture_name)];
             glw::delete_textures(&mut names);
         }
 
         {
-            let mut names = [ Some(framebuffer_name) ];
+            let mut names = [Some(framebuffer_name)];
             glw::delete_framebuffers(&mut names);
         }
     }

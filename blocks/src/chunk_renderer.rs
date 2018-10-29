@@ -10,9 +10,6 @@ use cube;
 use gl;
 use glw;
 use image;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 pub enum Program {
     Unlinked(Option<glw::ProgramName>),
@@ -29,15 +26,34 @@ pub enum FragmentShader {
     Compiled(Option<glw::CompiledFragmentShaderName>),
 }
 
+pub struct ChunkRendererChanges {
+    pub vert: bool,
+    pub frag: bool,
+    pub dirt: bool,
+    pub stone: bool,
+}
+
+impl ChunkRendererChanges {
+    pub fn new() -> Self {
+        ChunkRendererChanges {
+            vert: false,
+            frag: false,
+            dirt: false,
+            stone: false,
+        }
+    }
+
+    pub fn all() -> Self {
+        ChunkRendererChanges {
+            vert: true,
+            frag: true,
+            dirt: true,
+            stone: true,
+        }
+    }
+}
+
 pub struct ChunkRenderer {
-    vertex_shader_modified: Arc<Mutex<bool>>,
-    vertex_shader_path: PathBuf,
-    fragment_shader_modified: Arc<Mutex<bool>>,
-    fragment_shader_path: PathBuf,
-    dirt_image_modified: Arc<Mutex<bool>>,
-    dirt_image_path: PathBuf,
-    stone_image_modified: Arc<Mutex<bool>>,
-    stone_image_path: PathBuf,
     vertex_shader_name: VertexShader,
     fragment_shader_name: FragmentShader,
     program_name: Program,
@@ -51,19 +67,9 @@ pub struct ChunkRenderer {
     block_buffer_name: glw::BufferName,
 }
 
-const VERTEX_SHADER_PATH: &'static str = "chunk_renderer.vert";
-const FRAGMENT_SHADER_PATH: &'static str = "chunk_renderer.frag";
-const DIRT_IMAGE_PATH: &'static str = "dirt_xyz.png";
-const STONE_IMAGE_PATH: &'static str = "stone_xyz.png";
-
 impl ChunkRenderer {
-    pub fn new(assets: &mut Assets) -> Self {
+    pub fn new(assets: &Assets) -> Self {
         unsafe {
-            let vertex_shader_path = assets.get_path(VERTEX_SHADER_PATH);
-            let fragment_shader_path = assets.get_path(FRAGMENT_SHADER_PATH);
-            let dirt_image_path = assets.get_path(DIRT_IMAGE_PATH);
-            let stone_image_path = assets.get_path(STONE_IMAGE_PATH);
-
             let [vertex_buffer_name, element_buffer_name, block_buffer_name] = {
                 let mut names: [Option<glw::BufferName>; 3] = Default::default();
                 glw::gen_buffers(&mut names);
@@ -88,31 +94,11 @@ impl ChunkRenderer {
                 n0.unwrap()
             };
 
-            let r = ChunkRenderer {
-                vertex_shader_modified: assets.get_modified(&vertex_shader_path),
-                vertex_shader_path,
-                fragment_shader_modified: assets.get_modified(&fragment_shader_path),
-                fragment_shader_path,
-                dirt_image_modified: assets.get_modified(&dirt_image_path),
-                dirt_image_path,
-                stone_image_modified: assets.get_modified(&stone_image_path),
-                stone_image_path,
-                vertex_shader_name: VertexShader::Uncompiled(glw::VertexShaderName::new()),
-                fragment_shader_name: FragmentShader::Uncompiled(glw::FragmentShaderName::new()),
-                program_name: Program::Unlinked(glw::ProgramName::new()),
-                pos_from_wld_to_clp_space_loc: None,
-                texture_atlas_name,
-                vertex_array_name,
-                vertex_buffer_name,
-                element_buffer_name,
-                block_buffer_name,
-            };
+            glw::bind_vertex_array(&vertex_array_name);
 
-            glw::bind_vertex_array(&r.vertex_array_name);
-
-            // Set up vertex buffer.
+            // Set up vertex buffer
             {
-                glw::bind_buffer(glw::ARRAY_BUFFER, &r.vertex_buffer_name);
+                glw::bind_buffer(glw::ARRAY_BUFFER, &vertex_buffer_name);
 
                 gl::BufferData(
                     gl::ARRAY_BUFFER,
@@ -122,9 +108,9 @@ impl ChunkRenderer {
                 );
             }
 
-            // Set up element buffer.
+            // Set up element buffer
             {
-                glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &r.element_buffer_name);
+                glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &element_buffer_name);
 
                 gl::BufferData(
                     gl::ELEMENT_ARRAY_BUFFER,
@@ -134,9 +120,9 @@ impl ChunkRenderer {
                 );
             }
 
-            // Set up block buffer.
+            // Set up block buffer
             {
-                glw::bind_buffer(glw::ARRAY_BUFFER, &r.block_buffer_name);
+                glw::bind_buffer(glw::ARRAY_BUFFER, &block_buffer_name);
 
                 gl::BufferData(
                     gl::ARRAY_BUFFER,
@@ -147,7 +133,7 @@ impl ChunkRenderer {
             }
 
             {
-                glw::bind_texture(glw::TEXTURE_2D_ARRAY, &r.texture_atlas_name);
+                glw::bind_texture(glw::TEXTURE_2D_ARRAY, &texture_atlas_name);
 
                 gl::TexStorage3D(
                     gl::TEXTURE_2D_ARRAY, // target
@@ -176,92 +162,68 @@ impl ChunkRenderer {
                 );
             }
 
-            r
+            let mut renderer = ChunkRenderer {
+                vertex_shader_name: VertexShader::Uncompiled(glw::VertexShaderName::new()),
+                fragment_shader_name: FragmentShader::Uncompiled(glw::FragmentShaderName::new()),
+                program_name: Program::Unlinked(glw::ProgramName::new()),
+                pos_from_wld_to_clp_space_loc: None,
+                texture_atlas_name,
+                vertex_array_name,
+                vertex_buffer_name,
+                element_buffer_name,
+                block_buffer_name,
+            };
+
+            renderer.update(assets, ChunkRendererChanges::all());
+
+            renderer
         }
     }
 
-    fn update(&mut self) {
-        let vertex_shader_modified = {
-            let mut modified = self.vertex_shader_modified.lock().unwrap();
-            if *modified {
-                *modified = false;
-                true
-            } else {
-                false
-            }
-        };
-
-        let fragment_shader_modified = {
-            let mut modified = self.fragment_shader_modified.lock().unwrap();
-            if *modified {
-                *modified = false;
-                true
-            } else {
-                false
-            }
-        };
-
-        let dirt_image_modified = {
-            let mut modified = self.dirt_image_modified.lock().unwrap();
-            if *modified {
-                *modified = false;
-                true
-            } else {
-                false
-            }
-        };
-
-        let stone_image_modified = {
-            let mut modified = self.stone_image_modified.lock().unwrap();
-            if *modified {
-                *modified = false;
-                true
-            } else {
-                false
-            }
-        };
-
-        if vertex_shader_modified {
-            let source = file_to_string(&self.vertex_shader_path).unwrap();
+    pub fn update(&mut self, assets: &Assets, changes: ChunkRendererChanges) {
+        if changes.vert {
+            let source = file_to_string(&assets.chunk_renderer_vert).unwrap();
             unsafe {
                 let name: glw::VertexShaderName = match self.vertex_shader_name {
                     VertexShader::Uncompiled(ref mut name) => name.take(),
                     VertexShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledVertexShaderName| name.into()),
-                }.unwrap();
+                }
+                .unwrap();
 
                 self.vertex_shader_name = name
                     .compile(&[&source])
                     .map(|name| VertexShader::Compiled(Some(name)))
                     .unwrap_or_else(|(name, err)| {
-                        eprintln!("\n{}:\n{}", VERTEX_SHADER_PATH, err);
+                        eprintln!("\n{}:\n{}", assets.chunk_renderer_vert.display(), err);
                         VertexShader::Uncompiled(Some(name))
                     });
             }
         }
 
-        if fragment_shader_modified {
-            let source = file_to_string(&self.fragment_shader_path).unwrap();
+        if changes.frag {
+            let source = file_to_string(&assets.chunk_renderer_frag).unwrap();
             unsafe {
                 let name: glw::FragmentShaderName = match self.fragment_shader_name {
                     FragmentShader::Uncompiled(ref mut name) => name.take(),
                     FragmentShader::Compiled(ref mut name) => name
                         .take()
                         .map(|name: glw::CompiledFragmentShaderName| name.into()),
-                }.unwrap();
+                }
+                .unwrap();
 
                 self.fragment_shader_name = name
                     .compile(&[&source])
                     .map(|name| FragmentShader::Compiled(Some(name)))
                     .unwrap_or_else(|(name, err)| {
-                        eprintln!("\n{}:\n{}", FRAGMENT_SHADER_PATH, err);
+                        eprintln!("\n{}:\n{}", assets.chunk_renderer_frag.display(), err);
                         FragmentShader::Uncompiled(Some(name))
                     });
             }
         }
 
-        if vertex_shader_modified || fragment_shader_modified {
+        if changes.vert || changes.frag {
             if let VertexShader::Compiled(Some(ref vertex_shader_name)) = self.vertex_shader_name {
                 if let FragmentShader::Compiled(Some(ref fragment_shader_name)) =
                     self.fragment_shader_name
@@ -273,7 +235,8 @@ impl ChunkRenderer {
                             Program::Linked(ref mut name) => {
                                 name.take().map(|name: glw::LinkedProgramName| name.into())
                             }
-                        }.unwrap();
+                        }
+                        .unwrap();
 
                         // Link the new program.
                         self.program_name = program_name
@@ -402,12 +365,12 @@ impl ChunkRenderer {
         }
 
         unsafe {
-            if dirt_image_modified || stone_image_modified {
+            if changes.dirt || changes.stone {
                 glw::bind_texture(glw::TEXTURE_2D_ARRAY, &self.texture_atlas_name);
             }
 
-            if stone_image_modified {
-                let img = image::open(&self.stone_image_path).unwrap();
+            if changes.stone {
+                let img = image::open(&assets.stone_xyz_png).unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);
@@ -426,8 +389,8 @@ impl ChunkRenderer {
                 );
             }
 
-            if dirt_image_modified {
-                let img = image::open(&self.dirt_image_path).unwrap();
+            if changes.dirt {
+                let img = image::open(&assets.dirt_xyz_png).unwrap();
                 let img = img.flipv().to_rgba();
                 assert_eq!(img.width(), 32);
                 assert_eq!(img.height(), 32);
@@ -446,15 +409,13 @@ impl ChunkRenderer {
                 );
             }
 
-            if stone_image_modified || dirt_image_modified {
+            if changes.stone || changes.dirt {
                 glw::generate_mipmap(glw::TEXTURE_2D_ARRAY);
             }
         }
     }
 
     pub fn render(&mut self, pos_from_wld_to_clp_space: &Matrix4<f32>, chunk: &Chunk) {
-        self.update();
-
         if let Program::Linked(Some(ref program_name)) = self.program_name {
             if let Some(ref pos_from_wld_to_clp_space_loc) = self.pos_from_wld_to_clp_space_loc {
                 unsafe {
@@ -539,11 +500,11 @@ impl ChunkRenderer {
             ..
         } = self;
         {
-            let mut names = [ Some(texture_atlas_name) ];
+            let mut names = [Some(texture_atlas_name)];
             glw::delete_textures(&mut names);
         }
         {
-            let mut names = [ Some(vertex_array_name) ];
+            let mut names = [Some(vertex_array_name)];
             glw::delete_vertex_arrays(&mut names);
         }
         {
