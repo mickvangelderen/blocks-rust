@@ -106,8 +106,12 @@ fn main() {
         .watch(&assets.root, notify::RecursiveMode::Recursive)
         .unwrap();
 
-    let mut chunk_renderer = ChunkRenderer::new(&assets);
-    let text_renderer = TextRenderer::new(&assets);
+    let mut chunk_renderer;
+    let text_renderer;
+    unsafe {
+        chunk_renderer = ChunkRenderer::new(&assets);
+        text_renderer = TextRenderer::new(&assets);
+    }
 
     let mut should_stop = false;
     let mut window_has_focus = false;
@@ -642,7 +646,9 @@ fn main() {
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
 
-        chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        unsafe {
+            chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        }
 
         // Render ui
         unsafe {
