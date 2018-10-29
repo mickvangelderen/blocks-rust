@@ -19,6 +19,7 @@ serial_test!{fn new_and_drop_dont_panic() {
             let mut names: [Option<glw::VertexArrayName>; 1] = Default::default();
             glw::gen_vertex_arrays(&mut names);
             glw::delete_vertex_arrays(&mut names);
+            ::std::mem::forget(names);
         }
 
         assert_eq!(gl::GetError(), gl::NO_ERROR);
@@ -47,6 +48,7 @@ serial_test!{fn can_bind() {
             }
 
             glw::delete_vertex_arrays(&mut names);
+            ::std::mem::forget(names);
         }
     }
 }}

@@ -1,14 +1,11 @@
 use core::marker::PhantomData;
 use gl;
-use program::LinkedProgramName;
-use std::ffi::CStr;
 use num::NonMinusOneI32;
 
 pub struct UniformLocation<T>(NonMinusOneI32, PhantomData<*const T>);
 
 impl<T> UniformLocation<T> {
-    pub unsafe fn new(program_name: &LinkedProgramName, identifier: &CStr) -> Option<Self> {
-        let loc: i32 = gl::GetUniformLocation(program_name.as_u32(), identifier.as_ptr());
+    pub unsafe fn from_raw(loc: i32) -> Option<Self> {
         NonMinusOneI32::new(loc).map(|n| UniformLocation(n, PhantomData))
     }
 

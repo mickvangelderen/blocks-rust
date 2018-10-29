@@ -10,23 +10,13 @@ extern crate glw;
 mod support;
 
 serial_test!{fn create_a_program() {
-    {
-        let (_events_loop, _window) = support::build_display();
+    let (_events_loop, _window) = support::build_display();
 
-        let program_name = glw::ProgramName::new().unwrap();
+    unsafe {
+        let program_name = glw::create_program().unwrap();
 
-        unsafe {
-            assert_eq!(program_name.as_u32(), 1);
-        }
-    }
+        assert_eq!(program_name.as_u32(), 1);
 
-    {
-        let (_events_loop, _window) = support::build_display();
-
-        let program_name = glw::ProgramName::new().unwrap();
-
-        unsafe {
-            assert_eq!(program_name.as_u32(), 1);
-        }
+        glw::delete_program(program_name);
     }
 }}

@@ -1,9 +1,17 @@
 #![feature(optin_builtin_traits)]
+#![feature(const_int_wrapping)]
 #![feature(const_fn)]
 
 extern crate core;
 extern crate gl;
 
+// Macros first.
+#[macro_use]
+mod name;
+#[macro_use]
+pub mod string;
+
+mod array;
 mod attribute_location;
 mod buffer_target;
 mod framebuffer_attachment;
@@ -12,7 +20,6 @@ mod framebuffer_target;
 mod functions;
 mod marker;
 mod max_combined_texture_image_units;
-mod names;
 mod num;
 mod program;
 mod shader;
@@ -26,10 +33,6 @@ mod texture_wrap;
 mod uniform_location;
 mod viewport;
 
-// Can't auto sort bc macro import order important.
-#[macro_use]
-pub mod string;
-
 pub use self::attribute_location::*;
 pub use self::buffer_target::*;
 pub use self::framebuffer_attachment::*;
@@ -38,7 +41,7 @@ pub use self::framebuffer_target::*;
 pub use self::functions::*;
 pub use self::marker::*;
 pub use self::max_combined_texture_image_units::*;
-pub use self::names::*;
+pub use self::name::*;
 pub use self::num::*;
 pub use self::program::*;
 pub use self::shader::*;

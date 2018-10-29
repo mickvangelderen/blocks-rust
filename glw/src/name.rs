@@ -1,26 +1,64 @@
-use std::mem::ManuallyDrop;
-use std::num::NonZeroU32;
-use small_ref;
+#[macro_export]
+macro_rules! impl_name_arrays {
+    ($T:ident, $TA:ident, $OTA:ident, $($N:expr,)+) => {
+        $(
+            impl $TA for [$T; $N] {
+                type $OTA = [Option<$T>; $N];
 
+                #[inline]
+                fn wrap_all(self) -> Self::$OTA {
+                    // Safe because:
+                    // 1. every BufferName is a valid Option<BufferName>.
+                    unsafe {
+                        ::std::mem::transmute(self)
+                    }
+                }
+            }
+
+            impl $OTA for [Option<$T>; $N] {
+                type $TA = [$T; $N];
+
+                #[inline]
+                fn unwrap_all(self) -> Option<Self::$TA> {
+                    // Safe because:
+                    // 1. we ensure all names are Some,
+                    // 2. every Some<BufferName> is a valid BufferName.
+                    unsafe {
+                        for name in self.iter() {
+                            if name.is_none() {
+                                return None
+                            }
+                        }
+
+                        Some(::std::mem::transmute(self))
+                    }
+                }
+            }
+        )+
+    };
+}
+
+#[macro_export]
 macro_rules! impl_name {
     ($T:ident) => {
         #[derive(Debug, Eq, PartialEq)]
-        pub struct $T(NonZeroU32);
+        #[repr(transparent)]
+        pub struct $T(::std::num::NonZeroU32);
 
         impl $T {
             #[inline]
             pub unsafe fn from_raw(name: u32) -> Option<Self> {
-                NonZeroU32::new(name).map($T)
+                ::std::num::NonZeroU32::new(name).map($T)
             }
 
             #[inline]
             pub const unsafe fn from_raw_unchecked(name: u32) -> Self {
-                $T(NonZeroU32::new_unchecked(name))
+                $T(::std::num::NonZeroU32::new_unchecked(name))
             }
 
             #[inline]
             pub unsafe fn into_raw(self) -> u32 {
-                ManuallyDrop::new(self).as_u32()
+                ::std::mem::ManuallyDrop::new(self).as_u32()
             }
 
             #[inline]
@@ -38,18 +76,40 @@ macro_rules! impl_name {
                 }
             }
         }
+    };
+    ($T:ident, $TA:ident, $OTA:ident) => {
+        $crate::impl_name!($T);
+
+        pub trait $TA {
+            type $OTA;
+
+            fn wrap_all(self) -> Self::$OTA;
+        }
+
+        pub trait $OTA {
+            type $TA;
+
+            fn unwrap_all(self) -> Option<Self::$TA>;
+        }
+        $crate::impl_name_arrays! {
+            $T, $TA, $OTA,
+            0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+            10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+            20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+            30, 31, 32,
+        }
 
         // Promise every NonZeroU32 is a valid $T and vice versa.
-        unsafe impl small_ref::Raw for $T {
-            type Raw = NonZeroU32;
+        unsafe impl $crate::small_ref::Raw for $T {
+            type Raw = ::std::num::NonZeroU32;
         }
     };
 }
 
-impl_name!(BufferName);
-impl_name!(FramebufferName);
-impl_name!(TextureName);
-impl_name!(VertexArrayName);
+impl_name!(BufferName, BufferNameArray, OptionBufferNameArray);
+impl_name!(FramebufferName, FramebufferNameArray, OptionFramebufferNameArray);
+impl_name!(TextureName, TextureNameArray, OptionTextureNameArray);
+impl_name!(VertexArrayName, VertexArrayNameArray, OptionVertexArrayNameArray);
 
 pub struct DefaultFramebufferName();
 
@@ -86,57 +146,11 @@ mod seal {
     impl MaybeDefaultFramebufferName for super::FramebufferName {}
 }
 
-// pub trait OptionBufferNameArray {
-//     type BufferNameArray;
-
-//     fn unwrap_all(self) -> Self::BufferNameArray;
-// }
-
-// macro_rules! array_impls {
-//     (items { $($T:ty,)+ } sizes { $($N:expr,)+ }) => {
-//         array_impls!(@repeat_items { $($T,)+ } @ { $($N,)+ });
-//     };
-//     (@repeat_items { $($T:ty,)+ } @ $NS:tt) => {
-//         $(
-//             array_impls!(@repeat_sizes { $T } @ $NS);
-//         )+
-//     };
-//     (@repeat_sizes { $T:ty } @ { $($N:expr,)+ }) => {
-//         $(
-//             impl OptionBufferNameArray for ([Option<$T>; $N]) {
-//                 type BufferNameArray = [$T; $N];
-//                 #[inline]
-//                 fn unwrap_all(self) -> Self::BufferNameArray {
-//                     unsafe {
-//                         for name in self.iter() {
-//                             name.as_ref().unwrap();
-//                         }
-
-//                         ::std::mem::transmute(self)
-//                     }
-//                 }
-//             }
-//         )+
-//     };
-// }
-
-// array_impls! {
-//     items {
-//         BufferName,
-//         ManuallyDrop<BufferName>,
-//     }
-//     sizes {
-//          0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-//         10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-//         20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
-//         30, 31, 32,
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::small_ref;
+    use super::super::small_ref;
 
     type BufferNameRef<'a> = small_ref::SmallRef<'a, BufferName>;
 

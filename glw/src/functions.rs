@@ -1,25 +1,83 @@
-use gl;
 use super::*;
+use array::Array;
+use gl;
 use std::ffi::CStr;
 
+// Shader names.
 #[inline]
-pub unsafe fn get_attrib_location(program: &LinkedProgramName, name: &CStr) -> Option<AttributeLocation> {
-    AttributeLocation::new(program, name)
+pub unsafe fn create_shader(kind: ShaderKind) -> Option<ShaderName> {
+    ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
 }
 
 #[inline]
-pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {
-    gl::BindBuffer(target as u32, name.as_u32());
+pub unsafe fn delete_shader(name: ShaderName) {
+    gl::DeleteShader(name.as_u32());
+    ::std::mem::forget(name);
+}
+
+// Program names.
+
+#[inline]
+pub unsafe fn create_program() -> Option<ProgramName> {
+    ProgramName::from_raw(gl::CreateProgram())
 }
 
 #[inline]
-pub unsafe fn bind_vertex_array(name: &VertexArrayName) {
-    gl::BindVertexArray(name.as_u32());
+pub unsafe fn delete_program(name: ProgramName) {
+    gl::DeleteProgram(name.as_u32());
+    ::std::mem::forget(name);
 }
 
 #[inline]
-pub unsafe fn use_program(program: &LinkedProgramName) {
+pub unsafe fn use_program(program: &ProgramName) {
     gl::UseProgram(program.as_u32());
+}
+
+#[inline]
+pub unsafe fn get_attrib_location(
+    program_name: &ProgramName,
+    attrib_name: &CStr,
+) -> Option<AttributeLocation> {
+    AttributeLocation::from_raw(gl::GetAttribLocation(
+        program_name.as_u32(),
+        attrib_name.as_ptr(),
+    ))
+}
+
+#[inline]
+pub unsafe fn get_uniform_location<T>(
+    program_name: &ProgramName,
+    uniform_name: &CStr,
+) -> Option<UniformLocation<T>> {
+    UniformLocation::from_raw(gl::GetUniformLocation(
+        program_name.as_u32(),
+        uniform_name.as_ptr(),
+    ))
+}
+
+// Texture names.
+
+#[inline]
+pub unsafe fn gen_textures(names: &mut [Option<TextureName>]) {
+    gl::GenTextures(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_textures(names: &mut [Option<TextureName>]) {
+    gl::DeleteTextures(names.len() as i32, names.as_ptr() as *const u32);
+}
+
+#[inline]
+pub unsafe fn gen_textures_move<A: Array<Option<TextureName>>>() -> A {
+    let mut names: A = ::std::mem::uninitialized();
+    gen_textures(names.as_mut_slice());
+    names
+}
+
+#[inline]
+pub unsafe fn delete_textures_move<A: Array<Option<TextureName>>>(mut names: A) {
+    delete_textures(names.as_mut_slice());
+    ::std::mem::forget(names);
 }
 
 #[inline]
@@ -30,6 +88,129 @@ pub unsafe fn active_texture(unit: TextureUnit) {
 #[inline]
 pub unsafe fn bind_texture(target: TextureTarget, name: &TextureName) {
     gl::BindTexture(target as u32, name.as_u32());
+}
+
+#[inline]
+pub unsafe fn tex_parameter_i<P, V>(target: TextureTarget, parameter: P, value: V)
+where
+    P: TextureParameterI32Key<Value = V>,
+    V: TextureParameterI32Value,
+{
+    gl::TexParameteri(target as u32, parameter.as_u32(), value.as_i32());
+}
+
+#[inline]
+    pub unsafe fn generate_mipmap(target: TextureTarget) {
+    gl::GenerateMipmap(target as u32);
+}
+
+#[inline]
+    pub unsafe fn tex_image_2d(
+    target: TextureTarget,
+    mipmap_level: i32,
+    internal_format: i32,
+    width: i32,
+    height: i32,
+    format: u32,
+    component_format: u32,
+    data: *const ::std::os::raw::c_void,
+) {
+    gl::TexImage2D(
+        target as u32,
+        mipmap_level,
+        internal_format,
+        width,
+        height,
+        0, // border, must be zero
+        format,
+        component_format,
+        data,
+    );
+}
+
+// Buffer names.
+
+#[inline]
+pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
+    gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
+    gl::DeleteBuffers(names.len() as i32, names.as_ptr() as *const u32);
+}
+
+#[inline]
+pub unsafe fn gen_buffers_move<A: Array<Option<BufferName>>>() -> A {
+    let mut names: A = ::std::mem::uninitialized();
+    gen_buffers(names.as_mut_slice());
+    names
+}
+
+#[inline]
+pub unsafe fn delete_buffers_move<A: Array<Option<BufferName>>>(mut names: A) {
+    delete_buffers(names.as_mut_slice());
+    ::std::mem::forget(names);
+}
+
+#[inline]
+pub unsafe fn bind_buffer(target: BufferTarget, name: &BufferName) {
+    gl::BindBuffer(target as u32, name.as_u32());
+}
+
+// Vertex array names.
+
+#[inline]
+pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
+    gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
+    gl::DeleteVertexArrays(names.len() as i32, names.as_ptr() as *const u32);
+}
+
+#[inline]
+pub unsafe fn gen_vertex_arrays_move<A: Array<Option<VertexArrayName>>>() -> A {
+    let mut names: A = ::std::mem::uninitialized();
+    gen_vertex_arrays(names.as_mut_slice());
+    names
+}
+
+#[inline]
+pub unsafe fn delete_vertex_arrays_move<A: Array<Option<VertexArrayName>>>(mut names: A) {
+    delete_vertex_arrays(names.as_mut_slice());
+    ::std::mem::forget(names);
+}
+
+#[inline]
+pub unsafe fn bind_vertex_array(name: &VertexArrayName) {
+    gl::BindVertexArray(name.as_u32());
+}
+
+// Framebuffer names.
+
+#[inline]
+pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
+    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn delete_framebuffers(names: &mut [Option<FramebufferName>]) {
+    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
+}
+
+#[inline]
+pub unsafe fn gen_framebuffers_move<A: Array<Option<FramebufferName>>>() -> A {
+    let mut names: A = ::std::mem::uninitialized();
+    gen_framebuffers(names.as_mut_slice());
+    names
+}
+
+#[inline]
+pub unsafe fn delete_framebuffers_move<A: Array<Option<FramebufferName>>>(mut names: A) {
+    delete_framebuffers(names.as_mut_slice());
+    ::std::mem::forget(names);
 }
 
 #[inline]
@@ -62,111 +243,7 @@ pub unsafe fn framebuffer_texture_2d(
     );
 }
 
-#[inline]
-pub unsafe fn tex_parameter_i<P, V>(target: TextureTarget, parameter: P, value: V)
-where
-    P: TextureParameterI32Key<Value = V>,
-    V: TextureParameterI32Value,
-{
-    gl::TexParameteri(target as u32, parameter.as_u32(), value.as_i32());
-}
-
-#[inline]
-pub unsafe fn generate_mipmap(target: TextureTarget) {
-    gl::GenerateMipmap(target as u32);
-}
-
-#[inline]
-pub unsafe fn tex_image_2d(
-    target: TextureTarget,
-    mipmap_level: i32,
-    internal_format: i32,
-    width: i32,
-    height: i32,
-    format: u32,
-    component_format: u32,
-    data: *const ::std::os::raw::c_void,
-) {
-    gl::TexImage2D(
-        target as u32,
-        mipmap_level,
-        internal_format,
-        width,
-        height,
-        0, // border, must be zero
-        format,
-        component_format,
-        data,
-    );
-}
-
-// NOTE: We do not trust the opengl implementation to overwrite all
-// values, so we initialize the names to Nones. Since the names can't be
-// dropped the process will abort.
-
-#[inline]
-pub unsafe fn gen_textures(names: &mut [Option<TextureName>]) {
-    for name in names.iter_mut() {
-        ::std::mem::drop(name.take());
-    }
-    gl::GenTextures(names.len() as i32, names.as_mut_ptr() as *mut u32);
-}
-
-#[inline]
-pub unsafe fn delete_textures(names: &mut [Option<TextureName>]) {
-    gl::DeleteTextures(names.len() as i32, names.as_ptr() as *const u32);
-    for name in names.iter_mut() {
-        ::std::mem::forget(name.take());
-    }
-}
-
-#[inline]
-pub unsafe fn gen_buffers(names: &mut [Option<BufferName>]) {
-    for name in names.iter_mut() {
-        ::std::mem::drop(name.take());
-    }
-    gl::GenBuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
-}
-
-#[inline]
-pub unsafe fn delete_buffers(names: &mut [Option<BufferName>]) {
-    gl::DeleteBuffers(names.len() as i32, names.as_ptr() as *const u32);
-    for name in names.iter_mut() {
-        ::std::mem::forget(name.take());
-    }
-}
-
-#[inline]
-pub unsafe fn gen_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
-    for name in names.iter_mut() {
-        ::std::mem::drop(name.take());
-    }
-    gl::GenVertexArrays(names.len() as i32, names.as_mut_ptr() as *mut u32);
-}
-
-#[inline]
-pub unsafe fn delete_vertex_arrays(names: &mut [Option<VertexArrayName>]) {
-    gl::DeleteVertexArrays(names.len() as i32, names.as_ptr() as *const u32);
-    for name in names.iter_mut() {
-        ::std::mem::forget(name.take());
-    }
-}
-
-#[inline]
-pub unsafe fn gen_framebuffers(names: &mut [Option<FramebufferName>]) {
-    for name in names.iter_mut() {
-        ::std::mem::drop(name.take());
-    }
-    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
-}
-
-#[inline]
-pub unsafe fn delete_framebuffers(names: &mut [Option<FramebufferName>]) {
-    gl::GenFramebuffers(names.len() as i32, names.as_mut_ptr() as *mut u32);
-    for name in names.iter_mut() {
-        ::std::mem::forget(name.take());
-    }
-}
+// Uniform setters.
 
 #[inline]
 pub unsafe fn uniform_1i(uniform_location: &UniformLocation<i32>, value: i32) {
@@ -237,6 +314,6 @@ pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value:
     gl::Uniform1fv(
         uniform_location.as_i32(),
         value.len() as i32,
-        value.as_ptr()
+        value.as_ptr(),
     );
 }

@@ -10,23 +10,19 @@ extern crate glw;
 mod support;
 
 use glw::BufferName;
+use glw::BufferNameArray;
+use glw::OptionBufferNameArray;
 
 serial_test!{fn gen_and_delete_buffers() {
     let (_events_loop, _window) = support::build_display();
 
     unsafe {
-        let mut names: [Option<BufferName>; 3] = Default::default();
-
-        glw::gen_buffers(&mut names);
+        let names = glw::gen_buffers_move::<[Option<BufferName>; 3]>().unwrap_all().unwrap();
 
         for (i, n) in names.iter().enumerate() {
-            assert_eq!(n.as_ref().unwrap().as_u32(), i as u32 + 1);
+            assert_eq!(n.as_u32(), i as u32 + 1);
         }
 
-        glw::delete_buffers(&mut names);
-
-        for n in names.iter() {
-            assert!(n.is_none());
-        }
+        glw::delete_buffers_move(names.wrap_all());
     }
 }}

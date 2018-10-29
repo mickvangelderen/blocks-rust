@@ -1,13 +1,9 @@
-use gl;
-use program::LinkedProgramName;
-use std::ffi::CStr;
 use num::NonMinusOneU32;
 
 pub struct AttributeLocation(NonMinusOneU32);
 
 impl AttributeLocation {
-    pub(crate) unsafe fn new(program_name: &LinkedProgramName, identifier: &CStr) -> Option<Self> {
-        let loc: i32 = gl::GetAttribLocation(program_name.as_u32(), identifier.as_ptr());
+    pub unsafe fn from_raw(loc: i32) -> Option<Self> {
         NonMinusOneU32::new(loc as u32).map(AttributeLocation)
     }
 
