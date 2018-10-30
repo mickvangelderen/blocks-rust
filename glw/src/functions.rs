@@ -34,6 +34,16 @@ pub unsafe fn use_program(program: &ProgramName) {
 }
 
 #[inline]
+pub unsafe fn attach_shader(program: &ProgramName, shader: &ShaderName) {
+    gl::AttachShader(program.as_u32(), shader.as_u32());
+}
+
+#[inline]
+pub unsafe fn link_program(program: &ProgramName) {
+    gl::LinkProgram(program.as_u32());
+}
+
+#[inline]
 pub unsafe fn get_attrib_location(
     program_name: &ProgramName,
     attrib_name: &CStr,
