@@ -4,6 +4,7 @@ use gl;
 use std::ffi::CStr;
 
 // Shader names.
+
 #[inline]
 pub unsafe fn create_shader(kind: ShaderKind) -> Option<ShaderName> {
     ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
@@ -13,6 +14,70 @@ pub unsafe fn create_shader(kind: ShaderKind) -> Option<ShaderName> {
 pub unsafe fn delete_shader(name: ShaderName) {
     gl::DeleteShader(name.as_u32());
     ::std::mem::forget(name);
+}
+
+#[inline]
+pub unsafe fn shader_source(shader: &ShaderName, sources: &[&[u8]], lengths: &[i32]) {
+    assert_eq!(sources.len(), lengths.len());
+    gl::ShaderSource(
+        shader.as_u32(),
+        sources.len() as i32,
+        sources.as_ptr() as *const *const i8,
+        lengths.as_ptr(),
+    );
+}
+
+#[inline]
+pub unsafe fn compile_shader(shader: &ShaderName) {
+    gl::CompileShader(shader.as_u32());
+}
+
+#[inline]
+pub unsafe fn get_shaderiv<P: GetShaderivParam>(
+    shader: &ShaderName,
+    pname: P,
+    pvalue: &mut P::Value,
+) {
+    gl::GetShaderiv(
+        shader.as_u32(),
+        pname.as_u32(),
+        pvalue as *mut P::Value as *mut i32,
+    );
+}
+
+#[inline]
+pub unsafe fn get_shaderiv_move<P: GetShaderivParam>(shader: &ShaderName, pname: P) -> P::Value {
+    let mut pvalue: P::Value = ::std::mem::uninitialized();
+    get_shaderiv(shader, pname, &mut pvalue);
+    pvalue
+}
+
+#[inline]
+pub unsafe fn get_shader_info_log(shader: &ShaderName, length: &mut i32, buffer: &mut [u8]) {
+    gl::GetShaderInfoLog(
+        shader.as_u32(),
+        buffer.len() as i32,
+        length,
+        buffer.as_mut_ptr() as *mut i8,
+    );
+}
+
+#[inline]
+pub unsafe fn get_shader_info_log_move(shader: &ShaderName) -> Vec<u8> {
+    let mut buffer = {
+        let capacity = get_shaderiv_move(shader, INFO_LOG_LENGTH);
+        assert!(capacity >= 0);
+        Vec::with_capacity(capacity as usize)
+    };
+    let mut length = ::std::mem::uninitialized();
+    get_shader_info_log(
+        shader,
+        &mut length,
+        ::std::slice::from_raw_parts_mut(buffer.as_mut_ptr(), buffer.capacity()),
+    );
+    assert!(length >= 0 && length <= buffer.capacity() as i32);
+    buffer.set_len(length as usize);
+    buffer
 }
 
 // Program names.
@@ -44,16 +109,54 @@ pub unsafe fn link_program(program: &ProgramName) {
 }
 
 #[inline]
-#[allow(unused_variables)]
-pub unsafe fn get_programiv<P: GetProgramivParam>(program: &ProgramName, pname: P, pvalue: &mut P::Value) {
-    gl::GetProgramiv(program.as_u32(), P::as_u32(), pvalue as *mut _ as *mut i32);
+pub unsafe fn get_programiv<P: GetProgramivParam>(
+    program: &ProgramName,
+    pname: P,
+    pvalue: &mut P::Value,
+) {
+    gl::GetProgramiv(
+        program.as_u32(),
+        pname.as_u32(),
+        pvalue as *mut _ as *mut i32,
+    );
 }
 
 #[inline]
-pub unsafe fn get_programiv_move<P: GetProgramivParam>(program: &ProgramName, pname: P) -> P::Value {
+pub unsafe fn get_programiv_move<P: GetProgramivParam>(
+    program: &ProgramName,
+    pname: P,
+) -> P::Value {
     let mut pvalue: P::Value = ::std::mem::uninitialized();
     get_programiv(program, pname, &mut pvalue);
     pvalue
+}
+
+#[inline]
+pub unsafe fn get_program_info_log(program: &ProgramName, length: &mut i32, buffer: &mut [u8]) {
+    gl::GetProgramInfoLog(
+        program.as_u32(),
+        buffer.len() as i32,
+        length,
+        buffer.as_mut_ptr() as *mut i8,
+    );
+}
+
+#[inline]
+pub unsafe fn get_program_info_log_move(program: &ProgramName) -> Vec<u8> {
+    let mut buffer = {
+        let capacity = get_programiv_move(program, INFO_LOG_LENGTH);
+        assert!(capacity >= 0);
+        Vec::with_capacity(capacity as usize)
+    };
+    let mut length = ::std::mem::uninitialized();
+    get_program_info_log(
+        program,
+        &mut length,
+        ::std::slice::from_raw_parts_mut(buffer.as_mut_ptr(), buffer.capacity()),
+    );
+    assert!(length >= 0 && length <= buffer.capacity() as i32);
+    buffer.set_len(length as usize);
+    buffer
 }
 
 #[inline]
@@ -123,12 +226,12 @@ where
 }
 
 #[inline]
-    pub unsafe fn generate_mipmap(target: TextureTarget) {
+pub unsafe fn generate_mipmap(target: TextureTarget) {
     gl::GenerateMipmap(target as u32);
 }
 
 #[inline]
-    pub unsafe fn tex_image_2d(
+pub unsafe fn tex_image_2d(
     target: TextureTarget,
     mipmap_level: i32,
     internal_format: i32,
