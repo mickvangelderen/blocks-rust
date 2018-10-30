@@ -18,9 +18,9 @@ impl ShaderKind {
     }
 }
 
-pub const COMPUTE: ShaderKind = ShaderKind::Compute;
-pub const FRAGMENT: ShaderKind = ShaderKind::Fragment;
-pub const GEOMETRY: ShaderKind = ShaderKind::Geometry;
-pub const VERTEX: ShaderKind = ShaderKind::Vertex;
+pub const COMPUTE_SHADER: ShaderKind = ShaderKind::Compute;
+pub const FRAGMENT_SHADER: ShaderKind = ShaderKind::Fragment;
+pub const GEOMETRY_SHADER: ShaderKind = ShaderKind::Geometry;
+pub const VERTEX_SHADER: ShaderKind = ShaderKind::Vertex;
 pub const TESS_CONTROL_SHADER: ShaderKind = ShaderKind::TesselationControl;
 pub const TESS_EVALUATION_SHADER: ShaderKind = ShaderKind::TesselationEvaluation;
