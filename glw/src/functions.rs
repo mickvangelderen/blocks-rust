@@ -44,6 +44,19 @@ pub unsafe fn link_program(program: &ProgramName) {
 }
 
 #[inline]
+#[allow(unused_variables)]
+pub unsafe fn get_programiv<P: GetProgramivParam>(program: &ProgramName, pname: P, pvalue: &mut P::Value) {
+    gl::GetProgramiv(program.as_u32(), P::as_u32(), pvalue as *mut _ as *mut i32);
+}
+
+#[inline]
+pub unsafe fn get_programiv_move<P: GetProgramivParam>(program: &ProgramName, pname: P) -> P::Value {
+    let mut pvalue: P::Value = ::std::mem::uninitialized();
+    get_programiv(program, pname, &mut pvalue);
+    pvalue
+}
+
+#[inline]
 pub unsafe fn get_attrib_location(
     program_name: &ProgramName,
     attrib_name: &CStr,
