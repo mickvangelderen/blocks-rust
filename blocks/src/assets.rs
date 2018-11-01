@@ -71,6 +71,6 @@ pub fn file_to_bytes<P: AsRef<Path>>(path: P) -> ::std::io::Result<Vec<u8>> {
     use std::io::Read;
     let mut file = ::std::fs::File::open(path)?;
     let mut contents = Vec::new();
-    file.read_to_end(&mut contents);
+    file.read_to_end(&mut contents)?;
     Ok(contents)
 }

@@ -458,12 +458,43 @@ pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value:
     );
 }
 
-
 #[inline]
-pub unsafe fn uniform_matrix4fv(uniform_location: &UniformLocation<*const f32>, transpose: bool, value: &[[f32; 16]]) {
-    gl::Uniform4fv(
+pub unsafe fn uniform_matrix4fv(
+    uniform_location: &UniformLocation<*const f32>,
+    transpose: bool,
+    value: &[[f32; 16]],
+) {
+    gl::UniformMatrix4fv(
         uniform_location.as_i32(),
         value.len() as i32,
-        value.as_ptr(),
+        transpose as u8,
+        value.as_ptr() as *const f32,
     );
 }
+
+macro_rules! impl_uniform_matrix {
+    ($(($n:ident, $M:ident, $Flat:ty)),+ $(,)*) => {
+        $(
+            pub unsafe fn $n<M: $M>(loc: &UniformLocation<$Flat>, val: &M) {
+                gl::UniformMatrix4fv(
+                    loc.as_i32(),
+                    1,
+                    M::major_axis() as u8,
+                    val.as_ref().as_ptr(),
+                );
+            }
+        )+
+    }
+}
+
+impl_uniform_matrix!(
+    (uniform_matrix2f, Matrix2f, [f32; 4]),
+    (uniform_matrix3f, Matrix3f, [f32; 9]),
+    (uniform_matrix4f, Matrix4f, [f32; 16]),
+    (uniform_matrix2x3f, Matrix2x3f, [f32; 6]),
+    (uniform_matrix3x2f, Matrix3x2f, [f32; 6]),
+    (uniform_matrix2x4f, Matrix2x4f, [f32; 8]),
+    (uniform_matrix4x2f, Matrix4x2f, [f32; 8]),
+    (uniform_matrix3x4f, Matrix3x4f, [f32; 12]),
+    (uniform_matrix4x3f, Matrix4x3f, [f32; 12]),
+);

@@ -45,7 +45,7 @@ pub struct ChunkRenderer {
     vertex_shader: VertexShader,
     fragment_shader: FragmentShader,
     program: Program,
-    pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[[f32; 4]; 4]>>,
+    pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[f32; 16]>>,
     texture_atlas_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
     #[allow(unused)]
@@ -429,7 +429,10 @@ impl ChunkRenderer {
                 //     }
                 // }
 
-                pos_from_wld_to_clp_space_loc.set(pos_from_wld_to_clp_space.as_matrix_ref());
+                glw::uniform_matrix4f(
+                    pos_from_wld_to_clp_space_loc,
+                    pos_from_wld_to_clp_space.as_matrix_ref(),
+                );
 
                 glw::active_texture(glw::TEXTURE0);
                 glw::bind_texture(glw::TEXTURE_2D_ARRAY, &self.texture_atlas_name);

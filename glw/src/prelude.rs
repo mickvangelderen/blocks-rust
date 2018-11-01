@@ -1,3 +1,5 @@
+pub use as_slice::AsSlice;
+
 pub use name::BufferNameArray;
 pub use name::FramebufferNameArray;
 pub use name::TextureNameArray;

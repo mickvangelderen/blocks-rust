@@ -128,8 +128,9 @@ pub struct TextRenderer {
     program: Program,
     vertex_shader: VertexShader,
     fragment_shader: FragmentShader,
+    #[allow(unused)]
     program_font_texture_loc: Option<glw::UniformLocation<i32>>,
-    program_pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[[f32; 4]; 4]>>,
+    program_pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[f32; 16]>>,
     program_font_size_loc: Option<glw::UniformLocation<f32>>,
     texture_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
@@ -408,7 +409,7 @@ impl TextRenderer {
             }
 
             if let Some(ref loc) = self.program_pos_from_wld_to_clp_space_loc {
-                glw::uniform_fv(loc, pos_from_wld_to_clp_space.as_matrix_ref());
+                glw::uniform_matrix4f(loc, pos_from_wld_to_clp_space.as_matrix_ref());
             }
 
             // Update character buffer.

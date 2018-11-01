@@ -43,7 +43,9 @@ static ELEMENT_DATA: [u32; 4] = [0, 1, 2, 3];
 
 pub struct PostRenderer<'a> {
     program: Program,
+    #[allow(unused)]
     vertex_shader: VertexShader,
+    #[allow(unused)]
     fragment_shader: FragmentShader,
     vertex_array_name: glw::VertexArrayName,
     #[allow(unused)]

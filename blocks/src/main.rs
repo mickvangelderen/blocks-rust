@@ -89,8 +89,7 @@ fn main() {
             .with_vsync(true),
         // .with_multisampling(16),
         &events_loop,
-    )
-    .unwrap();
+    ).unwrap();
 
     unsafe {
         gl_window.make_current().unwrap();
@@ -657,54 +656,54 @@ fn main() {
             glw::bind_framebuffer(glw::FRAMEBUFFER, &glw::DEFAULT_FRAMEBUFFER_NAME);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::Disable(gl::DEPTH_TEST);
-        }
 
-        post_renderer.render(render_mode as i32, &frustrum, &viewport, mouse_pos);
+            post_renderer.render(render_mode as i32, &frustrum, &viewport, mouse_pos);
 
-        // obj
-        let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
-            left: 0.0,
-            right: viewport.width() as f32,
-            bottom: viewport.height() as f32,
-            top: 0.0,
-            near: -5.0,
-            far: 5.0,
-        });
+            // obj
+            let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
+                left: 0.0,
+                right: viewport.width() as f32,
+                bottom: viewport.height() as f32,
+                top: 0.0,
+                near: -5.0,
+                far: 5.0,
+            });
 
-        {
-            let s = format!(
-                "{} {}, {:.0} FPS, {:.0} UPS",
-                env!("CARGO_PKG_NAME"),
-                env!("GIT_HASH"),
-                fps,
-                ups
-            );
+            {
+                let s = format!(
+                    "{} {}, {:.0} FPS, {:.0} UPS",
+                    env!("CARGO_PKG_NAME"),
+                    env!("GIT_HASH"),
+                    fps,
+                    ups
+                );
 
-            text_renderer.render(
-                &pos_from_wld_to_clp_space,
-                &s,
-                font_size,
-                &text_renderer::Rect::from_dims(
+                text_renderer.render(
+                    &pos_from_wld_to_clp_space,
+                    &s,
                     font_size,
-                    font_size,
-                    viewport.width() as f32 - font_size,
-                    viewport.height() as f32 - font_size,
-                ),
-            );
-        }
+                    &text_renderer::Rect::from_dims(
+                        font_size,
+                        font_size,
+                        viewport.width() as f32 - font_size,
+                        viewport.height() as f32 - font_size,
+                    ),
+                );
+            }
 
-        if console_has_focus {
-            text_renderer.render(
-                &pos_from_wld_to_clp_space,
-                console.input(),
-                font_size,
-                &text_renderer::Rect::from_dims(
+            if console_has_focus {
+                text_renderer.render(
+                    &pos_from_wld_to_clp_space,
+                    console.input(),
                     font_size,
-                    font_size * 3.0,
-                    viewport.width() as f32 - font_size,
-                    viewport.height() as f32 - font_size,
-                ),
-            );
+                    &text_renderer::Rect::from_dims(
+                        font_size,
+                        font_size * 3.0,
+                        viewport.width() as f32 - font_size,
+                        viewport.height() as f32 - font_size,
+                    ),
+                );
+            }
         }
 
         gl_window.swap_buffers().unwrap();
