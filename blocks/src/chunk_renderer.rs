@@ -1,4 +1,4 @@
-use assets::file_to_string;
+use assets::file_to_bytes;
 use assets::Assets;
 use block::Block;
 use cgmath::Matrix4;
@@ -9,6 +9,7 @@ use chunk::Chunk;
 use cube;
 use gl;
 use glw;
+use glw::prelude::*;
 use image;
 use program::*;
 use shader::*;
@@ -42,8 +43,8 @@ impl ChunkRendererChanges {
 
 pub struct ChunkRenderer {
     vertex_shader: VertexShader,
-    fragment_shader_name: FragmentShader,
-    program_name: Program,
+    fragment_shader: FragmentShader,
+    program: Program,
     pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[[f32; 4]; 4]>>,
     texture_atlas_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
@@ -56,29 +57,21 @@ pub struct ChunkRenderer {
 
 impl ChunkRenderer {
     pub unsafe fn new(assets: &Assets) -> Self {
-        let [vertex_buffer_name, element_buffer_name, block_buffer_name] = {
-            let mut names: [Option<glw::BufferName>; 3] = Default::default();
-            glw::gen_buffers(&mut names);
-            [
-                names[0].take().unwrap(),
-                names[1].take().unwrap(),
-                names[2].take().unwrap(),
-            ]
-        };
+        let vertex_shader_name = glw::create_shader(glw::VERTEX_SHADER).unwrap();
+        let fragment_shader_name = glw::create_shader(glw::FRAGMENT_SHADER).unwrap();
+        let program_name = glw::create_program().unwrap();
 
-        let texture_atlas_name = {
-            let mut names: [_; 1] = Default::default();
-            glw::gen_textures(&mut names);
-            let [n0] = names;
-            n0.unwrap()
-        };
+        glw::attach_shader(&program_name, vertex_shader_name.as_ref());
+        glw::attach_shader(&program_name, fragment_shader_name.as_ref());
 
-        let vertex_array_name = {
-            let mut names: [_; 1] = Default::default();
-            glw::gen_vertex_arrays(&mut names);
-            let [n0] = names;
-            n0.unwrap()
-        };
+        let [vertex_buffer_name, element_buffer_name, block_buffer_name] =
+            glw::gen_buffers_move::<[_; 3]>().unwrap_all().unwrap();
+
+        let [texture_atlas_name] = glw::gen_textures_move::<[_; 1]>().unwrap_all().unwrap();
+
+        let [vertex_array_name] = glw::gen_vertex_arrays_move::<[_; 1]>()
+            .unwrap_all()
+            .unwrap();
 
         glw::bind_vertex_array(&vertex_array_name);
 
@@ -149,9 +142,9 @@ impl ChunkRenderer {
         }
 
         let mut renderer = ChunkRenderer {
-            vertex_shader: VertexShader::Uncompiled(glw::VertexShaderName::new()),
-            fragment_shader_name: FragmentShader::Uncompiled(glw::FragmentShaderName::new()),
-            program_name: Program::Unlinked(glw::ProgramName::new()),
+            vertex_shader: VertexShader::Uncompiled(vertex_shader_name),
+            fragment_shader: FragmentShader::Uncompiled(fragment_shader_name),
+            program: Program::Unlinked(program_name),
             pos_from_wld_to_clp_space_loc: None,
             texture_atlas_name,
             vertex_array_name,
@@ -168,11 +161,15 @@ impl ChunkRenderer {
     pub unsafe fn update(&mut self, assets: &Assets, changes: ChunkRendererChanges) {
         if changes.vert {
             let file_path = &assets.chunk_renderer_vert;
-            match file_to_string(&file_path) {
+            match file_to_bytes(&file_path) {
                 Ok(source) => {
-                    self.vertex_shader.recompile(source).unwrap_or_else(|err| {
-                        eprintln!("\n{}:\n{}", file_path.display(), err);
-                    });
+                    self.vertex_shader.compile(&[&source[..]]);
+
+                    if let VertexShader::Uncompiled(ref name) = self.vertex_shader {
+                        let log = String::from_utf8(glw::get_shader_info_log_move(name.as_ref()))
+                            .expect("Shader info log is not utf8.");
+                        eprintln!("\n{}:\n{}", file_path.display(), log);
+                    }
                 }
                 Err(err) => {
                     eprintln!("Failed to read {}: {}", file_path.display(), err);
@@ -181,154 +178,145 @@ impl ChunkRenderer {
         }
 
         if changes.frag {
-            let source = file_to_string(&assets.chunk_renderer_frag).unwrap();
-            let name: glw::FragmentShaderName = match self.fragment_shader_name {
-                FragmentShader::Uncompiled(ref mut name) => name.take(),
-                FragmentShader::Compiled(ref mut name) => name
-                    .take()
-                    .map(|name: glw::CompiledFragmentShaderName| name.into()),
-            }
-            .unwrap();
+            let file_path = &assets.chunk_renderer_frag;
+            match file_to_bytes(&file_path) {
+                Ok(source) => {
+                    self.fragment_shader.compile(&[&source[..]]);
 
-            self.fragment_shader_name = name
-                .compile(&[&source])
-                .map(|name| FragmentShader::Compiled(Some(name)))
-                .unwrap_or_else(|(name, err)| {
-                    eprintln!("\n{}:\n{}", assets.chunk_renderer_frag.display(), err);
-                    FragmentShader::Uncompiled(Some(name))
-                });
+                    if let FragmentShader::Uncompiled(ref name) = self.fragment_shader {
+                        let log = String::from_utf8(glw::get_shader_info_log_move(name.as_ref()))
+                            .expect("Shader info log is not valid utf8.");
+                        eprintln!("\n{}:\n{}", file_path.display(), log);
+                    }
+                }
+                Err(err) => {
+                    eprintln!("Failed to read {}: {}", file_path.display(), err);
+                }
+            }
         }
 
         if changes.vert || changes.frag {
-            if let VertexShader::Compiled(Some(ref vertex_shader)) = self.vertex_shader {
-                if let FragmentShader::Compiled(Some(ref fragment_shader_name)) =
-                    self.fragment_shader_name
-                {
-                    // Recover the program name, linked or not.
-                    let program_name: glw::ProgramName = match self.program_name {
-                        Program::Unlinked(ref mut name) => name.take(),
-                        Program::Linked(ref mut name) => {
-                            name.take().map(|name: glw::LinkedProgramName| name.into())
+            if let VertexShader::Compiled(_) = self.vertex_shader {
+                if let FragmentShader::Compiled(_) = self.fragment_shader {
+                    self.program.link();
+
+                    match self.program {
+                        Program::Unlinked(ref program_name) => {
+                            let log =
+                                String::from_utf8(glw::get_program_info_log_move(program_name))
+                                    .expect("Program info log is not valid utf8.");
+                            eprintln!("\nFailed to link program:\n{}", log);
                         }
-                    }
-                    .unwrap();
-
-                    // Link the new program.
-                    self.program_name = program_name
-                        .link(&[vertex_shader.as_ref(), fragment_shader_name.as_ref()])
-                        .map(|program_name| Program::Linked(Some(program_name)))
-                        .unwrap_or_else(|(program_name, err)| {
-                            eprintln!("\nFailed to link program:\n{}", err);
-                            Program::Unlinked(Some(program_name))
-                        });
-
-                    if let Program::Linked(Some(ref program_name)) = self.program_name {
-                        // Update uniform locations.
-                        self.pos_from_wld_to_clp_space_loc =
-                            glw::UniformLocation::<[[f32; 4]; 4]>::new(
+                        Program::Linked(ref program_name) => {
+                            // Update uniform locations.
+                            self.pos_from_wld_to_clp_space_loc = glw::get_uniform_location(
                                 &program_name,
                                 static_cstr!("pos_from_wld_to_clp_space"),
                             );
 
-                        // Bind the program.
-                        glw::use_program(&program_name);
+                            // Bind the program.
+                            glw::use_program(&program_name);
 
-                        // Set texture sampler uniform.
-                        match glw::UniformLocation::<i32>::new(
-                            &program_name,
-                            static_cstr!("texture_atlas"),
-                        ) {
-                            Some(texture_atlas_loc) => {
-                                texture_atlas_loc.set(0);
+                            // Set texture sampler uniform.
+                            match glw::get_uniform_location(
+                                &program_name,
+                                static_cstr!("texture_atlas"),
+                            ) {
+                                Some(ref texture_atlas_loc) => {
+                                    glw::uniform_1i(texture_atlas_loc, 0);
+                                }
+                                None => {
+                                    eprintln!("Could not find uniform \"texture_atlas\".");
+                                }
                             }
-                            None => {
-                                eprintln!("Could not find uniform \"texture_atlas\".");
-                            }
-                        }
 
-                        // Set up the vertex array object.
-                        {
-                            glw::bind_vertex_array(&self.vertex_array_name);
-
-                            // Set vertex position and texture position attributes.
+                            // Set up the vertex array object.
                             {
-                                glw::bind_buffer(glw::ARRAY_BUFFER, &self.vertex_buffer_name);
+                                glw::bind_vertex_array(&self.vertex_array_name);
 
-                                // Bind vertex position attribute.
-                                match glw::get_attrib_location(
-                                    &program_name,
-                                    static_cstr!("vs_ver_pos"),
-                                ) {
-                                    Some(loc) => {
-                                        gl::EnableVertexAttribArray(loc.as_u32());
-                                        gl::VertexAttribPointer(
-                                            loc.as_u32(),                                 // index
-                                            3,         // size (component count)
-                                            gl::FLOAT, // type (component type)
-                                            gl::FALSE, // normalized
-                                            ::std::mem::size_of::<cube::Vertex>() as i32, // stride
-                                            0 as *const ::std::os::raw::c_void, // offset
-                                        );
+                                // Set vertex position and texture position attributes.
+                                {
+                                    glw::bind_buffer(glw::ARRAY_BUFFER, &self.vertex_buffer_name);
+
+                                    // Bind vertex position attribute.
+                                    match glw::get_attrib_location(
+                                        &program_name,
+                                        static_cstr!("vs_ver_pos"),
+                                    ) {
+                                        Some(loc) => {
+                                            gl::EnableVertexAttribArray(loc.as_u32());
+                                            gl::VertexAttribPointer(
+                                                loc.as_u32(),                                 // index
+                                                3,         // size (component count)
+                                                gl::FLOAT, // type (component type)
+                                                gl::FALSE, // normalized
+                                                ::std::mem::size_of::<cube::Vertex>() as i32, // stride
+                                                0 as *const ::std::os::raw::c_void, // offset
+                                            );
+                                        }
+                                        None => {
+                                            eprintln!("Could not find vs_ver_pos attribute.");
+                                        }
                                     }
-                                    None => {
-                                        eprintln!("Could not find vs_ver_pos attribute.");
+
+                                    // Bind texture coordinate attribute.
+                                    match glw::get_attrib_location(
+                                        &program_name,
+                                        static_cstr!("vs_tex_pos"),
+                                    ) {
+                                        Some(loc) => {
+                                            gl::EnableVertexAttribArray(loc.as_u32());
+                                            gl::VertexAttribPointer(
+                                                loc.as_u32(),                                 // index
+                                                2,         // size (component count)
+                                                gl::FLOAT, // type (component type)
+                                                gl::FALSE, // normalized
+                                                ::std::mem::size_of::<cube::Vertex>() as i32, // stride
+                                                ::std::mem::size_of::<Vector3<f32>>()
+                                                    as *const ::std::os::raw::c_void, // offset
+                                            );
+                                        }
+                                        None => {
+                                            eprintln!("Could not find vs_tex_pos attribute.");
+                                        }
                                     }
                                 }
 
-                                // Bind texture coordinate attribute.
-                                match glw::get_attrib_location(
-                                    &program_name,
-                                    static_cstr!("vs_tex_pos"),
-                                ) {
-                                    Some(loc) => {
-                                        gl::EnableVertexAttribArray(loc.as_u32());
-                                        gl::VertexAttribPointer(
-                                            loc.as_u32(),                                 // index
-                                            2,         // size (component count)
-                                            gl::FLOAT, // type (component type)
-                                            gl::FALSE, // normalized
-                                            ::std::mem::size_of::<cube::Vertex>() as i32, // stride
-                                            ::std::mem::size_of::<Vector3<f32>>()
-                                                as *const ::std::os::raw::c_void, // offset
-                                        );
-                                    }
-                                    None => {
-                                        eprintln!("Could not find vs_tex_pos attribute.");
+                                // Set block type attribute.
+                                {
+                                    glw::bind_buffer(glw::ARRAY_BUFFER, &self.block_buffer_name);
+
+                                    // Bind block type attribute.
+                                    match glw::get_attrib_location(
+                                        &program_name,
+                                        static_cstr!("vs_blk_type"),
+                                    ) {
+                                        Some(loc) => {
+                                            gl::EnableVertexAttribArray(loc.as_u32());
+                                            gl::VertexAttribIPointer(
+                                                loc.as_u32(),                          // index
+                                                ::std::mem::size_of::<Block>() as i32, // size (component count)
+                                                gl::UNSIGNED_BYTE, // type (component type)
+                                                ::std::mem::size_of::<Block>() as i32, // stride
+                                                0 as *const ::std::os::raw::c_void, // offset
+                                            );
+                                            gl::VertexAttribDivisor(
+                                                loc.as_u32(), // index
+                                                1,            // advance every # instances
+                                            );
+                                        }
+                                        None => {
+                                            eprintln!("Could not find vs_blk_type attribute.");
+                                        }
                                     }
                                 }
+
+                                // Bind the element array buffer.
+                                glw::bind_buffer(
+                                    glw::ELEMENT_ARRAY_BUFFER,
+                                    &self.element_buffer_name,
+                                );
                             }
-
-                            // Set block type attribute.
-                            {
-                                glw::bind_buffer(glw::ARRAY_BUFFER, &self.block_buffer_name);
-
-                                // Bind block type attribute.
-                                match glw::get_attrib_location(
-                                    &program_name,
-                                    static_cstr!("vs_blk_type"),
-                                ) {
-                                    Some(loc) => {
-                                        gl::EnableVertexAttribArray(loc.as_u32());
-                                        gl::VertexAttribIPointer(
-                                            loc.as_u32(),                          // index
-                                            ::std::mem::size_of::<Block>() as i32, // size (component count)
-                                            gl::UNSIGNED_BYTE, // type (component type)
-                                            ::std::mem::size_of::<Block>() as i32, // stride
-                                            0 as *const ::std::os::raw::c_void, // offset
-                                        );
-                                        gl::VertexAttribDivisor(
-                                            loc.as_u32(), // index
-                                            1,            // advance every # instances
-                                        );
-                                    }
-                                    None => {
-                                        eprintln!("Could not find vs_blk_type attribute.");
-                                    }
-                                }
-                            }
-
-                            // Bind the element array buffer.
-                            glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &self.element_buffer_name);
                         }
                     }
                 }
@@ -385,7 +373,7 @@ impl ChunkRenderer {
     }
 
     pub unsafe fn render(&mut self, pos_from_wld_to_clp_space: &Matrix4<f32>, chunk: &Chunk) {
-        if let Program::Linked(Some(ref program_name)) = self.program_name {
+        if let Program::Linked(ref program_name) = self.program {
             if let Some(ref pos_from_wld_to_clp_space_loc) = self.pos_from_wld_to_clp_space_loc {
                 // Update block type buffer.
                 glw::bind_buffer(glw::ARRAY_BUFFER, &self.block_buffer_name);

@@ -1,45 +1,48 @@
-use std::num::NonZeroU32;
 use glw;
-use shader::ShaderName;
-use shader::Shader;
+use glw::ProgramName;
 
-pub enum State {
-    Unlinked = 1,
-    Linked = 2,
-}
-
-#[repr(transparent)]
-pub struct ProgramName(NonZeroU32);
-
-impl ProgramName {
-    unsafe fn link(&self, shaders: &[&ShaderName]) -> Result<(), String> {
-        Ok(())
-    }
-}
-
-pub struct Program {
-    state: State,
-    name: ProgramName,
+pub enum Program {
+    Unlinked(ProgramName),
+    Linked(ProgramName),
 }
 
 impl Program {
-    unsafe fn new(name: ProgramName) -> Self {
-        Program {
-            state: State::Unlinked,
-            name,
-        }
+    #[inline]
+    pub unsafe fn link(&mut self) {
+        use std::ptr;
+
+        // Create a bitwise copy of self.
+        let name = match ptr::read(self) {
+            Program::Unlinked(name) => name,
+            Program::Linked(name) => name.into(),
+        };
+
+        glw::link_program(&name);
+
+        let linked = glw::get_programiv_move(&name, glw::LINK_STATUS) != 0;
+
+        ptr::write(
+            self,
+            if linked {
+                Program::Linked(name)
+            } else {
+                Program::Unlinked(name)
+            },
+        );
     }
 
-    unsafe fn relink(&mut self, shaders: &[&ShaderName]) -> Result<(), String> {
-        match self.name.link(shaders) {
-            Ok(()) => {
-                self.state = State::Linked;
-                Ok(())
-            },
-            Err(err) => {
-                self.state = State::Unlinked;
-                Err(err)
-            }
+    pub unsafe fn log(&mut self) -> String {
+        String::from_utf8(glw::get_program_info_log_move(self.as_ref()))
+            .expect("Program info log is not valid utf8.")
+    }
+}
+
+impl AsRef<ProgramName> for Program {
+    #[inline]
+    fn as_ref(&self) -> &ProgramName {
+        match *self {
+            Program::Unlinked(ref name) => name,
+            Program::Linked(ref name) => name,
         }
     }
 }

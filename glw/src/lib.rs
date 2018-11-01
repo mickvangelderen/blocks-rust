@@ -11,7 +11,7 @@ mod name;
 #[macro_use]
 pub mod string;
 
-mod array;
+pub mod array;
 mod attribute_location;
 mod buffer_target;
 mod framebuffer_attachment;
@@ -24,6 +24,7 @@ mod marker;
 mod max_combined_texture_image_units;
 mod num;
 mod param;
+pub mod prelude;
 mod program;
 mod shader;
 mod shader_kind;

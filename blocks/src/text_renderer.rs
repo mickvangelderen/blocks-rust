@@ -1,10 +1,13 @@
-use assets::file_to_string;
+use assets::file_to_bytes;
 use assets::Assets;
 use cgmath::*;
 use cgmath_ext::*;
 use gl;
 use glw;
+use glw::prelude::*;
 use image;
+use program::*;
+use shader::*;
 
 struct Vertex {
     #[allow(unused)]
@@ -122,10 +125,12 @@ impl Rect {
 }
 
 pub struct TextRenderer {
-    program_name: glw::LinkedProgramName,
-    _program_font_texture_loc: glw::UniformLocation<i32>,
-    program_pos_from_wld_to_clp_space_loc: glw::UniformLocation<[[f32; 4]; 4]>,
-    program_font_size_loc: glw::UniformLocation<f32>,
+    program: Program,
+    vertex_shader: VertexShader,
+    fragment_shader: FragmentShader,
+    program_font_texture_loc: Option<glw::UniformLocation<i32>>,
+    program_pos_from_wld_to_clp_space_loc: Option<glw::UniformLocation<[[f32; 4]; 4]>>,
+    program_font_size_loc: Option<glw::UniformLocation<f32>>,
     texture_name: glw::TextureName,
     vertex_array_name: glw::VertexArrayName,
     #[allow(unused)]
@@ -136,67 +141,96 @@ pub struct TextRenderer {
 }
 
 impl TextRenderer {
-    pub fn new(assets: &Assets) -> Self {
-        unsafe {
-            let program_name = glw::ProgramName::new()
-                .unwrap()
-                .link(&[
-                    glw::VertexShaderName::new()
-                        .unwrap()
-                        .compile(&[&file_to_string(&assets.text_renderer_vert).unwrap()])
-                        .unwrap_or_else(|(_, err)| {
-                            panic!("\n{}:\n{}", assets.text_renderer_vert.display(), err);
-                        })
-                        .as_ref(),
-                    glw::FragmentShaderName::new()
-                        .unwrap()
-                        .compile(&[&file_to_string(&assets.text_renderer_frag).unwrap()])
-                        .unwrap_or_else(|(_, err)| {
-                            panic!("\n{}:\n{}", assets.text_renderer_frag.display(), err);
-                        })
-                        .as_ref(),
-                ])
-                .unwrap();
+    pub unsafe fn new(assets: &Assets) -> Self {
+        let program_name = glw::create_program().unwrap();
+        let vertex_shader_name = glw::create_shader(glw::VERTEX_SHADER).unwrap();
+        let fragment_shader_name = glw::create_shader(glw::FRAGMENT_SHADER).unwrap();
 
-            macro_rules! get_uniform_loc {
-                ($type:ty, $identifier:tt) => {
-                    glw::UniformLocation::<$type>::new(&program_name, static_cstr!($identifier))
-                        .unwrap_or_else(|| {
-                            panic!("Failed to get uniform location {:?}", $identifier);
-                        })
-                };
+        glw::attach_shader(&program_name, vertex_shader_name.as_ref());
+        glw::attach_shader(&program_name, fragment_shader_name.as_ref());
+
+        let mut program = Program::Unlinked(program_name);
+        let mut vertex_shader = VertexShader::Uncompiled(vertex_shader_name);
+        let mut fragment_shader = FragmentShader::Uncompiled(fragment_shader_name);
+
+        vertex_shader.compile(&[&file_to_bytes(&assets.text_renderer_vert).unwrap()[..]]);
+        fragment_shader.compile(&[&file_to_bytes(&assets.text_renderer_vert).unwrap()[..]]);
+        program.link();
+
+        let [vertex_buffer_name, element_buffer_name, character_buffer_name] =
+            glw::gen_buffers_move::<[_; 3]>().unwrap_all().unwrap();
+
+        let [vertex_array_name] = glw::gen_vertex_arrays_move::<[_; 1]>()
+            .unwrap_all()
+            .unwrap();
+
+        let texture_name: glw::TextureName = {
+            let [name] = glw::gen_textures_move::<[_; 1]>().unwrap_all().unwrap();
+
+            glw::bind_texture(glw::TEXTURE_2D, &name);
+
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D,
+                glw::TEXTURE_MIN_FILTER,
+                glw::LINEAR_MIPMAP_LINEAR,
+            );
+            glw::tex_parameter_i(
+                glw::TEXTURE_2D,
+                glw::TEXTURE_MAG_FILTER,
+                glw::LINEAR_MIPMAP_LINEAR,
+            );
+            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
+            glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
+
+            {
+                let img = image::open(&assets.font_padded_sdf_png).unwrap();
+                let img = img.flipv().to_rgba();
+                gl::TexImage2D(
+                    gl::TEXTURE_2D,                                // target
+                    0,                                             // mipmap level
+                    gl::RGBA8 as i32,                              // internal format
+                    img.width() as i32,                            // width
+                    img.height() as i32,                           // height
+                    0,                                             // border (must be 0)
+                    gl::RGBA,                                      // format
+                    gl::UNSIGNED_BYTE,                             // type
+                    img.as_ptr() as *const ::std::os::raw::c_void, // data
+                );
             }
 
-            let program_font_texture_loc = get_uniform_loc!(i32, "font_texture");
+            glw::generate_mipmap(glw::TEXTURE_2D);
 
-            let program_pos_from_wld_to_clp_space_loc =
-                get_uniform_loc!([[f32; 4]; 4], "pos_from_wld_to_clp_space");
+            name
+        };
 
-            let program_font_size_loc = get_uniform_loc!(f32, "font_size");
+        let program_font_texture_loc;
+        let program_pos_from_wld_to_clp_space_loc;
+        let program_font_size_loc;
 
-            let vertex_array_name = {
-                let mut names: [_; 1] = Default::default();
-                glw::gen_vertex_arrays(&mut names);
-                let [ n0 ] = names;
-                n0.unwrap()
-            };
+        if let Program::Linked(ref program_name) = program {
+            // macro_rules! get_uniform_loc {
+            //     ($type:ty, $identifier:tt) => {
+            //         glw::get_uniform_location::<$type>(&program_name, static_cstr!($identifier))
+            //             .unwrap_or_else(|| {
+            //                 panic!("Failed to get uniform location {:?}", $identifier);
+            //             })
+            //     };
+            // }
 
-            let [vertex_buffer_name, element_buffer_name, character_buffer_name] = {
-                let [ n0, n1, n2 ] = {
-                    let mut names: [_; 3] = Default::default();
-                    glw::gen_buffers(&mut names);
-                    names
-                };
-                [
-                    n0.unwrap(),
-                    n1.unwrap(),
-                    n2.unwrap(),
-                ]
-            };
+            program_font_texture_loc =
+                glw::get_uniform_location(program_name, static_cstr!("font_texture"));
+
+            program_pos_from_wld_to_clp_space_loc =
+                glw::get_uniform_location(program_name, static_cstr!("pos_from_wld_to_clp_space"));
+
+            program_font_size_loc =
+                glw::get_uniform_location(program_name, static_cstr!("font_size"));
 
             glw::use_program(&program_name);
 
-            program_font_texture_loc.set(0);
+            if let Some(ref loc) = program_font_texture_loc {
+                glw::uniform_1i(loc, 0);
+            }
 
             glw::bind_vertex_array(&vertex_array_name);
 
@@ -292,66 +326,28 @@ impl TextRenderer {
                 ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
                 gl::STATIC_DRAW,
             );
+        } else {
+            program_font_texture_loc = None;
+            program_pos_from_wld_to_clp_space_loc = None;
+            program_font_size_loc = None;
+        }
 
-            let texture_name: glw::TextureName = {
-                let name = {
-                    let mut names: [_; 1] = Default::default();
-                    glw::gen_textures(&mut names);
-                    let [ n0 ] = names;
-                    n0.unwrap()
-                };
-
-                glw::bind_texture(glw::TEXTURE_2D, &name);
-
-                glw::tex_parameter_i(
-                    glw::TEXTURE_2D,
-                    glw::TEXTURE_MIN_FILTER,
-                    glw::LINEAR_MIPMAP_LINEAR,
-                );
-                glw::tex_parameter_i(
-                    glw::TEXTURE_2D,
-                    glw::TEXTURE_MAG_FILTER,
-                    glw::LINEAR_MIPMAP_LINEAR,
-                );
-                glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_S, glw::CLAMP_TO_EDGE);
-                glw::tex_parameter_i(glw::TEXTURE_2D, glw::TEXTURE_WRAP_T, glw::CLAMP_TO_EDGE);
-
-                {
-                    let img = image::open(&assets.font_padded_sdf_png).unwrap();
-                    let img = img.flipv().to_rgba();
-                    gl::TexImage2D(
-                        gl::TEXTURE_2D,                                // target
-                        0,                                             // mipmap level
-                        gl::RGBA8 as i32,                              // internal format
-                        img.width() as i32,                            // width
-                        img.height() as i32,                           // height
-                        0,                                             // border (must be 0)
-                        gl::RGBA,                                      // format
-                        gl::UNSIGNED_BYTE,                             // type
-                        img.as_ptr() as *const ::std::os::raw::c_void, // data
-                    );
-                }
-
-                glw::generate_mipmap(glw::TEXTURE_2D);
-
-                name
-            };
-
-            TextRenderer {
-                program_name,
-                _program_font_texture_loc: program_font_texture_loc,
-                program_pos_from_wld_to_clp_space_loc,
-                program_font_size_loc,
-                texture_name,
-                vertex_array_name,
-                vertex_buffer_name,
-                element_buffer_name,
-                character_buffer_name,
-            }
+        TextRenderer {
+            program,
+            vertex_shader,
+            fragment_shader,
+            program_font_texture_loc,
+            program_pos_from_wld_to_clp_space_loc,
+            program_font_size_loc,
+            texture_name,
+            vertex_array_name,
+            vertex_buffer_name,
+            element_buffer_name,
+            character_buffer_name,
         }
     }
 
-    pub fn render(
+    pub unsafe fn render(
         &self,
         pos_from_wld_to_clp_space: &Matrix4<f32>,
         text: &str,
@@ -403,14 +399,17 @@ impl TextRenderer {
             character_data
         };
 
-        unsafe {
-            glw::use_program(&self.program_name);
+        if let Program::Linked(ref program_name) = self.program {
+            glw::use_program(&program_name);
 
             // Update uniforms.
-            self.program_font_size_loc.set(font_size);
+            if let Some(ref loc) = self.program_font_size_loc {
+                glw::uniform_1f(loc, font_size);
+            }
 
-            self.program_pos_from_wld_to_clp_space_loc
-                .set(pos_from_wld_to_clp_space.as_matrix_ref());
+            if let Some(ref loc) = self.program_pos_from_wld_to_clp_space_loc {
+                glw::uniform_fv(loc, pos_from_wld_to_clp_space.as_matrix_ref());
+            }
 
             // Update character buffer.
             glw::bind_buffer(glw::ARRAY_BUFFER, &self.character_buffer_name);

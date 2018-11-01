@@ -1,28 +1,42 @@
 use super::*;
 use array::Array;
+use array::SourceArray;
 use gl;
 use std::ffi::CStr;
 
 // Shader names.
 
 #[inline]
-pub unsafe fn create_shader(kind: ShaderKind) -> Option<ShaderName> {
-    ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
+pub unsafe fn create_shader<K: StaticShaderKind>(kind: K) -> Option<K::ShaderName> {
+    K::ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
 }
+// #[inline]
+// pub unsafe fn create_shader<S: StaticShaderName>(kind: S::ShaderKind) -> Option<S> {
+//     S::from_raw(gl::CreateShader(kind.as_u32()))
+// }
 
 #[inline]
-pub unsafe fn delete_shader(name: ShaderName) {
+pub unsafe fn delete_shader<S: StaticShaderName>(name: S) {
     gl::DeleteShader(name.as_u32());
     ::std::mem::forget(name);
 }
 
 #[inline]
-pub unsafe fn shader_source(shader: &ShaderName, sources: &[&[u8]], lengths: &[i32]) {
-    assert_eq!(sources.len(), lengths.len());
+// NOTE: Only supports array sizes that have an implementation.
+// FIXME: Provide a version for any array size.
+pub unsafe fn shader_source<'a, A: SourceArray<'a>>(shader: &ShaderName, sources: &A) {
+    // Scary, pointers not bound to 'a but should be. Perhaps we should
+    // move this conversion into the trait.
+    let mut pointers: A::RawSourceArray = std::mem::uninitialized();
+    let mut lengths: A::RawLengthArray = std::mem::uninitialized();
+    for (index, source) in sources.as_slice().iter().enumerate() {
+        pointers.as_mut_slice()[index] = source.as_ptr();
+        lengths.as_mut_slice()[index] = source.len() as i32;
+    }
     gl::ShaderSource(
         shader.as_u32(),
         sources.len() as i32,
-        sources.as_ptr() as *const *const i8,
+        pointers.as_ptr() as *const *const i8,
         lengths.as_ptr(),
     );
 }
@@ -438,6 +452,16 @@ pub unsafe fn uniform_4f(uniform_location: &UniformLocation<[f32; 4]>, value: [f
 #[inline]
 pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value: &[f32]) {
     gl::Uniform1fv(
+        uniform_location.as_i32(),
+        value.len() as i32,
+        value.as_ptr(),
+    );
+}
+
+
+#[inline]
+pub unsafe fn uniform_matrix4fv(uniform_location: &UniformLocation<*const f32>, transpose: bool, value: &[[f32; 16]]) {
+    gl::Uniform4fv(
         uniform_location.as_i32(),
         value.len() as i32,
         value.as_ptr(),

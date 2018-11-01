@@ -1,116 +1,105 @@
 use glw;
-use std::num::NonZeroU32;
+use glw::array::SourceArray;
 
-pub enum State {
-    Uncompiled = 1,
-    Compiled = 2,
-}
-
-#[repr(transparent)]
-pub struct ShaderName(NonZeroU32);
-
-impl ShaderName {
-    unsafe fn compile(&self, sources: &[&str]) -> Result<(), String> {
-        Ok(())
-    }
-}
-
-pub struct Shader {
-    state: State,
-    name: ShaderName,
-}
-
-impl Shader {
-    unsafe fn recompile(&mut self, sources: &[&str]) -> Result<(), String> {
-        match self.name.compile(sources) {
-            Ok(()) => {
-                self.state = State::Compiled;
-                Ok(())
-            },
-            Err(err) => {
-                self.state = State::Uncompiled;
-                Err(err)
+macro_rules! impl_shaders {
+    ($(($T:ident, $N:ident)),+ $(,)*) => {
+        $(
+            pub enum $T {
+                Uncompiled(glw::$N),
+                Compiled(glw::$N),
             }
-        }
+
+            impl $T {
+                #[inline]
+                pub unsafe fn compile<'a, A: SourceArray<'a>>(&mut self, sources: &A) {
+                    use std::ptr;
+
+                    let name = match ptr::read(self) {
+                        $T::Uncompiled(name) => name,
+                        $T::Compiled(name) => name,
+                    };
+
+                    glw::shader_source(name.as_ref(), sources);
+
+                    glw::compile_shader(name.as_ref());
+
+                    let compiled = glw::get_shaderiv_move(name.as_ref(), glw::COMPILE_STATUS) != 0;
+
+                    ptr::write(
+                        self,
+                        if compiled {
+                            $T::Compiled(name)
+                        } else {
+                            $T::Uncompiled(name)
+                        },
+                    );
+                }
+            }
+        )+
     }
 }
 
-#[derive(Debug)]
-pub struct ShaderName(NonZeroU32);
+impl_shaders!(
+    (VertexShader, VertexShaderName),
+    (FragmentShader, FragmentShaderName),
+);
 
-impl ShaderName {
-    #[inline]
-    fn new(kind: ShaderKind) -> Option<Self> {
-        NonZeroU32::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
-    }
+//         gl::ShaderSource(
+//             self.as_u32(),
+//             sources.len() as i32,
+//             sources.as_ptr() as *const *const i8,
+//             source_lengths.as_ptr(),
+//         );
 
-    #[inline]
-    pub unsafe fn as_u32(&self) -> u32 {
-        self.0.get()
-    }
+//         gl::CompileShader(self.as_u32());
 
-    pub unsafe fn compile(
-        self,
-        sources: &[&str],
-    ) -> Result<CompiledShaderName, (ShaderName, String)> {
-        // NOTE: Const generics please.
-        let source_lengths: Vec<i32> = sources.iter().map(|source| source.len() as i32).collect();
+//         let status = {
+//             let mut status = ::std::mem::uninitialized();
+//             gl::GetShaderiv(self.as_u32(), gl::COMPILE_STATUS, &mut status);
+//             status
+//         };
 
-        gl::ShaderSource(
-            self.as_u32(),
-            sources.len() as i32,
-            sources.as_ptr() as *const *const i8,
-            source_lengths.as_ptr(),
-        );
+//         if status == (gl::TRUE as i32) {
+//             Ok(CompiledShaderName(self))
+//         } else {
+//             let capacity = {
+//                 let mut capacity: i32 = ::std::mem::uninitialized();
+//                 gl::GetShaderiv(self.as_u32(), gl::INFO_LOG_LENGTH, &mut capacity);
+//                 assert!(capacity >= 0);
+//                 capacity
+//             };
 
-        gl::CompileShader(self.as_u32());
+//             let buffer = {
+//                 let mut buffer: Vec<u8> = Vec::with_capacity(capacity as usize);
+//                 let mut length: i32 = ::std::mem::uninitialized();
+//                 gl::GetShaderInfoLog(
+//                     self.as_u32(),
+//                     capacity,
+//                     &mut length,
+//                     buffer.as_mut_ptr() as *mut i8,
+//                 );
+//                 assert!(length >= 0 && length <= capacity);
+//                 buffer.set_len(length as usize);
+//                 buffer
+//             };
 
-        let status = {
-            let mut status = ::std::mem::uninitialized();
-            gl::GetShaderiv(self.as_u32(), gl::COMPILE_STATUS, &mut status);
-            status
-        };
+//             Err((
+//                 self,
+//                 String::from_utf8(buffer).expect("Shader info log is not utf8"),
+//             ))
+//         }
+//     }
+// }
 
-        if status == (gl::TRUE as i32) {
-            Ok(CompiledShaderName(self))
-        } else {
-            let capacity = {
-                let mut capacity: i32 = ::std::mem::uninitialized();
-                gl::GetShaderiv(self.as_u32(), gl::INFO_LOG_LENGTH, &mut capacity);
-                assert!(capacity >= 0);
-                capacity
-            };
+// impl Drop for ShaderName {
+//     #[inline]
+//     fn drop(&mut self) {
+//         unsafe {
+//             gl::DeleteShader(self.as_u32());
+//         }
+//     }
+// }
 
-            let buffer = {
-                let mut buffer: Vec<u8> = Vec::with_capacity(capacity as usize);
-                let mut length: i32 = ::std::mem::uninitialized();
-                gl::GetShaderInfoLog(
-                    self.as_u32(),
-                    capacity,
-                    &mut length,
-                    buffer.as_mut_ptr() as *mut i8,
-                );
-                assert!(length >= 0 && length <= capacity);
-                buffer.set_len(length as usize);
-                buffer
-            };
-
-            Err((
-                self,
-                String::from_utf8(buffer).expect("Shader info log is not utf8"),
-            ))
-        }
-    }
-}
-
-impl Drop for ShaderName {
-    #[inline]
-    fn drop(&mut self) {
-        unsafe {
-            gl::DeleteShader(self.as_u32());
-        }
-    }
-}
 // let source = file_to_string(&assets.chunk_renderer_vert).unwrap();
 // let name: glw::VertexShaderName = match self.vertex_shader_name {
 //     VertexShader::Uncompiled(ref mut name) => name.take(),
