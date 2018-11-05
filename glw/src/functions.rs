@@ -16,7 +16,7 @@ pub unsafe fn create_shader<K: StaticShaderKind>(kind: K) -> Option<K::ShaderNam
 // }
 
 #[inline]
-pub unsafe fn delete_shader<S: StaticShaderName>(name: S) {
+pub unsafe fn delete_shader_move<S: StaticShaderName>(name: S) {
     gl::DeleteShader(name.as_u32());
     ::std::mem::forget(name);
 }
@@ -102,7 +102,7 @@ pub unsafe fn create_program() -> Option<ProgramName> {
 }
 
 #[inline]
-pub unsafe fn delete_program(name: ProgramName) {
+pub unsafe fn delete_program_move(name: ProgramName) {
     gl::DeleteProgram(name.as_u32());
     ::std::mem::forget(name);
 }

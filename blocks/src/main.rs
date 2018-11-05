@@ -31,6 +31,7 @@ pub mod frustrum;
 pub mod post_renderer;
 pub mod program;
 pub mod rate_counter;
+pub mod renderer;
 pub mod shader;
 pub mod text_renderer;
 
@@ -45,6 +46,7 @@ use frustrum::Frustrum;
 use glutin::GlContext;
 use notify::Watcher;
 use post_renderer::PostRenderer;
+use post_renderer::PostRendererChanges;
 use std::env;
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -89,7 +91,8 @@ fn main() {
             .with_vsync(true),
         // .with_multisampling(16),
         &events_loop,
-    ).unwrap();
+    )
+    .unwrap();
 
     unsafe {
         gl_window.make_current().unwrap();
@@ -280,7 +283,7 @@ fn main() {
         name
     };
 
-    let post_renderer =
+    let mut post_renderer =
         PostRenderer::new(&assets, &color_texture_name, &depth_stencil_texture_name);
 
     while !should_stop {
@@ -554,6 +557,7 @@ fn main() {
 
         {
             let mut chunk_renderer_changes = ChunkRendererChanges::new();
+            let mut post_renderer_changes = PostRendererChanges::new();
 
             loop {
                 match file_watcher_rx.try_recv() {
@@ -574,12 +578,12 @@ fn main() {
                                 // if &path == &assets.text_renderer_frag {
                                 //     text_renderer_changes.frag = true;
                                 // }
-                                // if &path == &assets.post_renderer_vert {
-                                //     post_renderer_changes.vert = true;
-                                // }
-                                // if &path == &assets.post_renderer_frag {
-                                //     post_renderer_changes.frag = true;
-                                // }
+                                if &path == &assets.post_renderer_vert {
+                                    post_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.post_renderer_frag {
+                                    post_renderer_changes.frag = true;
+                                }
                                 if &path == &assets.dirt_xyz_png {
                                     chunk_renderer_changes.dirt = true;
                                 }
@@ -606,6 +610,7 @@ fn main() {
 
             unsafe {
                 chunk_renderer.update(&assets, chunk_renderer_changes);
+                post_renderer.update(&assets, post_renderer_changes);
             }
         }
 

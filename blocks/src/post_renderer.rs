@@ -1,10 +1,10 @@
-use assets::file_to_bytes;
 use assets::Assets;
 use cgmath::*;
 use gl;
 use glw;
 use glw::prelude::*;
 use program::*;
+use renderer;
 use shader::*;
 
 use frustrum::Frustrum;
@@ -40,6 +40,27 @@ static VERTEX_DATA: [Vertex; 4] = [
 ];
 
 static ELEMENT_DATA: [u32; 4] = [0, 1, 2, 3];
+
+pub struct PostRendererChanges {
+    pub vert: bool,
+    pub frag: bool,
+}
+
+impl PostRendererChanges {
+    pub fn new() -> Self {
+        PostRendererChanges {
+            vert: false,
+            frag: false,
+        }
+    }
+
+    pub fn all() -> Self {
+        PostRendererChanges {
+            vert: true,
+            frag: true,
+        }
+    }
+}
 
 pub struct PostRenderer<'a> {
     program: Program,
@@ -79,14 +100,6 @@ impl<'a> PostRenderer<'a> {
             glw::attach_shader(&program_name, vertex_shader_name.as_ref());
             glw::attach_shader(&program_name, fragment_shader_name.as_ref());
 
-            let mut program = Program::Unlinked(program_name);
-            let mut vertex_shader = VertexShader::Uncompiled(vertex_shader_name);
-            let mut fragment_shader = FragmentShader::Uncompiled(fragment_shader_name);
-
-            vertex_shader.compile(&[&file_to_bytes(&assets.post_renderer_vert).unwrap()[..]]);
-            fragment_shader.compile(&[&file_to_bytes(&assets.post_renderer_vert).unwrap()[..]]);
-            program.link();
-
             let [vertex_buffer_name, element_buffer_name] =
                 glw::gen_buffers_move::<[_; 2]>().unwrap_all().unwrap();
 
@@ -94,127 +107,175 @@ impl<'a> PostRenderer<'a> {
                 .unwrap_all()
                 .unwrap();
 
-            let mode_loc;
-            let frustrum_x0_loc;
-            let frustrum_x1_loc;
-            let frustrum_y0_loc;
-            let frustrum_y1_loc;
-            let frustrum_z0_loc;
-            let frustrum_z1_loc;
-            let viewport_loc;
-            let mouse_pos_loc;
-
-            if let Program::Linked(ref program_name) = program {
-                glw::use_program(&program_name);
-
-                if let Some(color_texture_loc) =
-                    glw::get_uniform_location(&program_name, static_cstr!("color_texture"))
-                {
-                    glw::uniform_1i(&color_texture_loc, 0);
-                } else {
-                    println!("Warning: Couldn't find color_texture_loc");
-                }
-
-                if let Some(depth_stencil_texture_loc) =
-                    glw::get_uniform_location(&program_name, static_cstr!("depth_stencil_texture"))
-                {
-                    glw::uniform_1i(&depth_stencil_texture_loc, 1);
-                } else {
-                    println!("Warning: Couldn't find depth_stencil_texture_loc");
-                }
-
-                mode_loc = glw::get_uniform_location(&program_name, static_cstr!("mode"));
-                frustrum_x0_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.x0"));
-                frustrum_x1_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.x1"));
-                frustrum_y0_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.y0"));
-                frustrum_y1_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.y1"));
-                frustrum_z0_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.z0"));
-                frustrum_z1_loc =
-                    glw::get_uniform_location(&program_name, static_cstr!("frustrum.z1"));
-
-                glw::bind_vertex_array(&vertex_array_name);
-
-                // Set up array buffer.
-                glw::bind_buffer(glw::ARRAY_BUFFER, &vertex_buffer_name);
-
-                gl::BufferData(
-                    gl::ARRAY_BUFFER,
-                    ::std::mem::size_of_val(&VERTEX_DATA) as isize,
-                    VERTEX_DATA.as_ptr() as *const ::std::os::raw::c_void,
-                    gl::STATIC_DRAW,
-                );
-
-                let vs_ver_pos_loc =
-                    gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_ver_pos"));
-                assert!(vs_ver_pos_loc != -1, "Couldn't find vs_ver_pos attribute");
-                gl::EnableVertexAttribArray(vs_ver_pos_loc as u32);
-                gl::VertexAttribPointer(
-                    vs_ver_pos_loc as u32,                  // index
-                    2,                                      // size (component count)
-                    gl::FLOAT,                              // type (component type)
-                    gl::FALSE,                              // normalized
-                    ::std::mem::size_of::<Vertex>() as i32, // stride
-                    0 as *const ::std::os::raw::c_void,     // offset
-                );
-                viewport_loc = glw::get_uniform_location(&program_name, static_cstr!("viewport"));
-                mouse_pos_loc = glw::get_uniform_location(&program_name, static_cstr!("mouse_pos"));
-
-                let vs_tex_pos_loc =
-                    gl::GetAttribLocation(program_name.as_u32(), gl_str!("vs_tex_pos"));
-                assert!(vs_tex_pos_loc != -1, "Couldn't find vs_tex_pos attribute");
-                gl::EnableVertexAttribArray(vs_tex_pos_loc as u32);
-                gl::VertexAttribPointer(
-                    vs_tex_pos_loc as u32,                                                  // index
-                    2,                                      // size (component count)
-                    gl::FLOAT,                              // type (component type)
-                    gl::FALSE,                              // normalized
-                    ::std::mem::size_of::<Vertex>() as i32, // stride
-                    ::std::mem::size_of::<Vector2<f32>>() as *const ::std::os::raw::c_void, // offset
-                );
-
-                // Set up element buffer.
-                glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &element_buffer_name);
-                gl::BufferData(
-                    gl::ELEMENT_ARRAY_BUFFER,
-                    ::std::mem::size_of_val(&ELEMENT_DATA) as isize,
-                    ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
-                    gl::STATIC_DRAW,
-                );
-            } else {
-                mode_loc = None;
-                frustrum_x0_loc = None;
-                frustrum_x1_loc = None;
-                frustrum_y0_loc = None;
-                frustrum_y1_loc = None;
-                frustrum_z0_loc = None;
-                frustrum_z1_loc = None;
-                viewport_loc = None;
-                mouse_pos_loc = None;
-            }
-
-            PostRenderer {
-                program,
-                vertex_shader,
-                fragment_shader,
+            let mut r = PostRenderer {
+                program: Program::Unlinked(program_name),
+                vertex_shader: VertexShader::Uncompiled(vertex_shader_name),
+                fragment_shader: FragmentShader::Uncompiled(fragment_shader_name),
                 color_texture_name: glw::SmallRef::new(color_texture_name),
                 depth_stencil_texture_name: glw::SmallRef::new(depth_stencil_texture_name),
                 vertex_array_name,
                 vertex_buffer_name,
                 element_buffer_name,
-                mode_loc,
-                frustrum_x0_loc,
-                frustrum_x1_loc,
-                frustrum_y0_loc,
-                frustrum_y1_loc,
-                frustrum_z0_loc,
-                frustrum_z1_loc,
-                mouse_pos_loc,
-                viewport_loc,
+                mode_loc: None,
+                frustrum_x0_loc: None,
+                frustrum_x1_loc: None,
+                frustrum_y0_loc: None,
+                frustrum_y1_loc: None,
+                frustrum_z0_loc: None,
+                frustrum_z1_loc: None,
+                mouse_pos_loc: None,
+                viewport_loc: None,
+            };
+
+            r.update(assets, PostRendererChanges::all());
+
+            r
+        }
+    }
+
+    pub unsafe fn update(&mut self, assets: &Assets, changes: PostRendererChanges) {
+        if changes.vert {
+            renderer::recompile_and_log_vert(&assets.post_renderer_vert, &mut self.vertex_shader);
+        }
+
+        if changes.frag {
+            renderer::recompile_and_log_frag(&assets.post_renderer_frag, &mut self.fragment_shader);
+        }
+
+        if (changes.vert || changes.frag)
+            && if let VertexShader::Compiled(_) = self.vertex_shader {
+                true
+            } else {
+                false
+            }
+            && if let FragmentShader::Compiled(_) = self.fragment_shader {
+                true
+            } else {
+                false
+            } {
+            self.program.link();
+
+            match self.program {
+                Program::Unlinked(ref program_name) => {
+                    let log = String::from_utf8(glw::get_program_info_log_move(program_name))
+                        .expect("Program info log is not valid utf8.");
+                    eprintln!("\nFailed to link program:\n{}", log);
+                }
+                Program::Linked(ref program_name) => {
+                    glw::use_program(&program_name);
+
+                    #[inline]
+                    unsafe fn get_uniform_location_logged<T>(
+                        program_name: &glw::ProgramName,
+                        location: &std::ffi::CStr,
+                    ) -> Option<glw::UniformLocation<T>> {
+                        let loc = glw::get_uniform_location(program_name, location);
+                        if let None = loc {
+                            eprintln!(
+                                "post_renderer.rs: Could not find uniform location {:?}.",
+                                location
+                            );
+                        }
+                        loc
+                    }
+
+                    #[inline]
+                    unsafe fn get_attrib_location_logged(
+                        program_name: &glw::ProgramName,
+                        location: &std::ffi::CStr,
+                    ) -> Option<glw::AttributeLocation> {
+                        let loc = glw::get_attrib_location(program_name, location);
+                        if let None = loc {
+                            eprintln!(
+                                "post_renderer.rs: Could not find attribute location {:?}.",
+                                location
+                            );
+                        }
+                        loc
+                    }
+
+                    if let Some(ref loc) =
+                        get_uniform_location_logged(&program_name, static_cstr!("color_texture"))
+                    {
+                        glw::uniform_1i(loc, 0);
+                    }
+
+                    if let Some(ref loc) = get_uniform_location_logged(
+                        &program_name,
+                        static_cstr!("depth_stencil_texture"),
+                    ) {
+                        glw::uniform_1i(loc, 1);
+                    }
+
+                    self.mode_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("mode"));
+                    self.frustrum_x0_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.x0"));
+                    self.frustrum_x1_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.x1"));
+                    self.frustrum_y0_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.y0"));
+                    self.frustrum_y1_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.y1"));
+                    self.frustrum_z0_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.z0"));
+                    self.frustrum_z1_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("frustrum.z1"));
+                    self.viewport_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("viewport"));
+                    self.mouse_pos_loc =
+                        get_uniform_location_logged(&program_name, static_cstr!("mouse_pos"));
+
+                    glw::bind_vertex_array(&self.vertex_array_name);
+
+                    // Set up vertex buffer.
+                    glw::bind_buffer(glw::ARRAY_BUFFER, &self.vertex_buffer_name);
+
+                    gl::BufferData(
+                        gl::ARRAY_BUFFER,
+                        ::std::mem::size_of_val(&VERTEX_DATA) as isize,
+                        VERTEX_DATA.as_ptr() as *const ::std::os::raw::c_void,
+                        gl::STATIC_DRAW,
+                    );
+
+                    if let Some(loc) =
+                        get_attrib_location_logged(&program_name, static_cstr!("vs_ver_pos"))
+                    {
+                        gl::EnableVertexAttribArray(loc.as_u32());
+                        gl::VertexAttribPointer(
+                            loc.as_u32(),                           // index
+                            2,                                      // size (component count)
+                            gl::FLOAT,                              // type (component type)
+                            gl::FALSE,                              // normalized
+                            ::std::mem::size_of::<Vertex>() as i32, // stride
+                            0 as *const ::std::os::raw::c_void,     // offset
+                        );
+                    }
+
+                    if let Some(loc) =
+                        get_attrib_location_logged(&program_name, static_cstr!("vs_tex_pos"))
+                    {
+                        gl::EnableVertexAttribArray(loc.as_u32());
+                        gl::VertexAttribPointer(
+                            loc.as_u32(),                                                           // index
+                            2,                                      // size (component count)
+                            gl::FLOAT,                              // type (component type)
+                            gl::FALSE,                              // normalized
+                            ::std::mem::size_of::<Vertex>() as i32, // stride
+                            ::std::mem::size_of::<Vector2<f32>>() as *const ::std::os::raw::c_void, // offset
+                        );
+                    }
+
+                    // Set up element buffer.
+                    glw::bind_buffer(glw::ELEMENT_ARRAY_BUFFER, &self.element_buffer_name);
+
+                    gl::BufferData(
+                        gl::ELEMENT_ARRAY_BUFFER,
+                        ::std::mem::size_of_val(&ELEMENT_DATA) as isize,
+                        ELEMENT_DATA.as_ptr() as *const ::std::os::raw::c_void,
+                        gl::STATIC_DRAW,
+                    );
+                }
             }
         }
     }
@@ -284,11 +345,17 @@ impl<'a> PostRenderer<'a> {
 
     pub unsafe fn delete(self) {
         let PostRenderer {
+            program,
+            vertex_shader,
+            fragment_shader,
             vertex_array_name,
             vertex_buffer_name,
             element_buffer_name,
             ..
         } = self;
+        fragment_shader.delete();
+        vertex_shader.delete();
+        program.delete();
         glw::delete_vertex_arrays_move([vertex_array_name].wrap_all());
         glw::delete_buffers_move([vertex_buffer_name, element_buffer_name].wrap_all());
     }

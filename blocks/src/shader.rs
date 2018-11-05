@@ -34,6 +34,13 @@ macro_rules! impl_shaders {
                         },
                     );
                 }
+
+                pub unsafe fn delete(self) {
+                    match self {
+                        $T::Uncompiled(shader_name) => glw::delete_shader_move(shader_name),
+                        $T::Compiled(shader_name) => glw::delete_shader_move(shader_name),
+                    }
+                }
             }
         )+
     }

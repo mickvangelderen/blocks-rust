@@ -35,6 +35,13 @@ impl Program {
         String::from_utf8(glw::get_program_info_log_move(self.as_ref()))
             .expect("Program info log is not valid utf8.")
     }
+
+    pub unsafe fn delete(self) {
+        match self {
+            Program::Unlinked(program_name) => glw::delete_program_move(program_name),
+            Program::Linked(program_name) => glw::delete_program_move(program_name),
+        }
+    }
 }
 
 impl AsRef<ProgramName> for Program {
