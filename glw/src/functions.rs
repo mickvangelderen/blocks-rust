@@ -459,15 +459,11 @@ pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value:
 }
 
 #[inline]
-pub unsafe fn uniform_matrix4fv(
-    uniform_location: &UniformLocation<*const f32>,
-    transpose: bool,
-    value: &[[f32; 16]],
-) {
+pub unsafe fn uniform_matrix4fv(uniform_location: &UniformLocation<[[f32; 16]]>, major_axis: MajorAxis, value: &[[f32; 16]]) {
     gl::UniformMatrix4fv(
         uniform_location.as_i32(),
         value.len() as i32,
-        transpose as u8,
+        major_axis as u8,
         value.as_ptr() as *const f32,
     );
 }
