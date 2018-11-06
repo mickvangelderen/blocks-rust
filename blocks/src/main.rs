@@ -401,11 +401,15 @@ fn main() {
                         match event {
                             DeviceEvent::Added => println!("Added device {:?}", device_id),
                             DeviceEvent::Removed => println!("Removed device {:?}", device_id),
-                            DeviceEvent::Motion { axis, value } => match axis {
-                                0 => mouse_dx += value,
-                                1 => mouse_dy += value,
-                                3 => mouse_dscroll += value,
-                                _ => (),
+                            DeviceEvent::Motion { axis, value } => {
+                                if window_has_focus {
+                                    match axis {
+                                        0 => mouse_dx += value,
+                                        1 => mouse_dy += value,
+                                        3 => mouse_dscroll += value,
+                                        _ => (),
+                                    }
+                                }
                             },
                             _ => (),
                         }
