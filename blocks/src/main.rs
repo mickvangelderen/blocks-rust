@@ -53,6 +53,7 @@ use std::sync::mpsc;
 use std::time::Duration;
 use std::{thread, time};
 use text_renderer::TextRenderer;
+use text_renderer::TextRendererChanges;
 
 fn main() {
     let mut chunk = Chunk {
@@ -562,6 +563,7 @@ fn main() {
         {
             let mut chunk_renderer_changes = ChunkRendererChanges::new();
             let mut post_renderer_changes = PostRendererChanges::new();
+            let mut text_renderer_changes = TextRendererChanges::new();
 
             loop {
                 match file_watcher_rx.try_recv() {
@@ -576,12 +578,12 @@ fn main() {
                                 if &path == &assets.chunk_renderer_frag {
                                     chunk_renderer_changes.frag = true;
                                 }
-                                // if &path == &assets.text_renderer_vert {
-                                //     text_renderer_changes.vert = true;
-                                // }
-                                // if &path == &assets.text_renderer_frag {
-                                //     text_renderer_changes.frag = true;
-                                // }
+                                if &path == &assets.text_renderer_vert {
+                                    text_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.text_renderer_frag {
+                                    text_renderer_changes.frag = true;
+                                }
                                 if &path == &assets.post_renderer_vert {
                                     post_renderer_changes.vert = true;
                                 }
@@ -593,6 +595,9 @@ fn main() {
                                 }
                                 if &path == &assets.stone_xyz_png {
                                     chunk_renderer_changes.stone = true;
+                                }
+                                if &path == &assets.font_padded_sdf_png {
+                                    text_renderer_changes.font_padded_sdf_png = true;
                                 }
                             }
                             _ => {}
