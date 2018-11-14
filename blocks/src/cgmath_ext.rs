@@ -1,13 +1,14 @@
 use cgmath;
 use glw;
 
-pub trait Matrix4Ext<T> {
-    fn as_matrix_ref(&self) -> glw::RowMatrixRef<&[[T; 4]; 4]>;
+// NOTE: Maybe not the best name.
+pub trait Matrix4Ext {
+    fn as_matrix_ref(&self) -> &glw::ColMajorMatrix<[[f32; 4]; 4]>;
 }
 
-impl<T> Matrix4Ext<T> for cgmath::Matrix4<T> {
+impl Matrix4Ext for cgmath::Matrix4<f32> {
     #[inline]
-    fn as_matrix_ref(&self) -> glw::RowMatrixRef<&[[T; 4]; 4]> {
-        glw::RowMatrixRef(self.as_ref())
+    fn as_matrix_ref(&self) -> &glw::ColMajorMatrix<[[f32; 4]; 4]> {
+        AsRef::<[[f32; 4]; 4]>::as_ref(self).into()
     }
 }

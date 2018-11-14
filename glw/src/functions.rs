@@ -1,28 +1,42 @@
 use super::*;
 use array::Array;
+use array::SourceArray;
 use gl;
 use std::ffi::CStr;
 
 // Shader names.
 
 #[inline]
-pub unsafe fn create_shader(kind: ShaderKind) -> Option<ShaderName> {
-    ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
+pub unsafe fn create_shader<K: StaticShaderKind>(kind: K) -> Option<K::ShaderName> {
+    K::ShaderName::from_raw(gl::CreateShader(kind.as_u32()))
 }
+// #[inline]
+// pub unsafe fn create_shader<S: StaticShaderName>(kind: S::ShaderKind) -> Option<S> {
+//     S::from_raw(gl::CreateShader(kind.as_u32()))
+// }
 
 #[inline]
-pub unsafe fn delete_shader(name: ShaderName) {
+pub unsafe fn delete_shader_move<S: StaticShaderName>(name: S) {
     gl::DeleteShader(name.as_u32());
     ::std::mem::forget(name);
 }
 
 #[inline]
-pub unsafe fn shader_source(shader: &ShaderName, sources: &[&[u8]], lengths: &[i32]) {
-    assert_eq!(sources.len(), lengths.len());
+// NOTE: Only supports array sizes that have an implementation.
+// FIXME: Provide a version for any array size.
+pub unsafe fn shader_source<'a, A: SourceArray<'a>>(shader: &ShaderName, sources: &A) {
+    // Scary, pointers not bound to 'a but should be. Perhaps we should
+    // move this conversion into the trait.
+    let mut pointers: A::RawSourceArray = std::mem::uninitialized();
+    let mut lengths: A::RawLengthArray = std::mem::uninitialized();
+    for (index, source) in sources.as_slice().iter().enumerate() {
+        pointers.as_mut_slice()[index] = source.as_ptr();
+        lengths.as_mut_slice()[index] = source.len() as i32;
+    }
     gl::ShaderSource(
         shader.as_u32(),
         sources.len() as i32,
-        sources.as_ptr() as *const *const i8,
+        pointers.as_ptr() as *const *const i8,
         lengths.as_ptr(),
     );
 }
@@ -88,7 +102,7 @@ pub unsafe fn create_program() -> Option<ProgramName> {
 }
 
 #[inline]
-pub unsafe fn delete_program(name: ProgramName) {
+pub unsafe fn delete_program_move(name: ProgramName) {
     gl::DeleteProgram(name.as_u32());
     ::std::mem::forget(name);
 }
@@ -443,3 +457,40 @@ pub unsafe fn uniform_1fv(uniform_location: &UniformLocation<*const f32>, value:
         value.as_ptr(),
     );
 }
+
+#[inline]
+pub unsafe fn uniform_matrix4fv(uniform_location: &UniformLocation<[[f32; 16]]>, major_axis: MajorAxis, value: &[[f32; 16]]) {
+    gl::UniformMatrix4fv(
+        uniform_location.as_i32(),
+        value.len() as i32,
+        major_axis as u8,
+        value.as_ptr() as *const f32,
+    );
+}
+
+macro_rules! impl_uniform_matrix {
+    ($(($n:ident, $M:ident, $Flat:ty)),+ $(,)*) => {
+        $(
+            pub unsafe fn $n<M: $M>(loc: &UniformLocation<$Flat>, val: &M) {
+                gl::UniformMatrix4fv(
+                    loc.as_i32(),
+                    1,
+                    M::major_axis() as u8,
+                    val.as_ref().as_ptr(),
+                );
+            }
+        )+
+    }
+}
+
+impl_uniform_matrix!(
+    (uniform_matrix2f, Matrix2f, [f32; 4]),
+    (uniform_matrix3f, Matrix3f, [f32; 9]),
+    (uniform_matrix4f, Matrix4f, [f32; 16]),
+    (uniform_matrix2x3f, Matrix2x3f, [f32; 6]),
+    (uniform_matrix3x2f, Matrix3x2f, [f32; 6]),
+    (uniform_matrix2x4f, Matrix2x4f, [f32; 8]),
+    (uniform_matrix4x2f, Matrix4x2f, [f32; 8]),
+    (uniform_matrix3x4f, Matrix3x4f, [f32; 12]),
+    (uniform_matrix4x3f, Matrix4x3f, [f32; 12]),
+);

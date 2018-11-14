@@ -29,7 +29,10 @@ pub mod console;
 pub mod cube;
 pub mod frustrum;
 pub mod post_renderer;
+pub mod program;
 pub mod rate_counter;
+pub mod renderer;
+pub mod shader;
 pub mod text_renderer;
 
 use block::Block;
@@ -38,13 +41,20 @@ use chunk::Chunk;
 use chunk::CHUNK_SIDE_BLOCKS;
 use chunk::CHUNK_TOTAL_BLOCKS;
 use chunk_renderer::ChunkRenderer;
+use chunk_renderer::ChunkRendererChanges;
 use frustrum::Frustrum;
 use glutin::GlContext;
+use glw::prelude::*;
+use notify::Watcher;
 use post_renderer::PostRenderer;
+use post_renderer::PostRendererChanges;
 use std::env;
 use std::path::PathBuf;
+use std::sync::mpsc;
+use std::time::Duration;
 use std::{thread, time};
 use text_renderer::TextRenderer;
+use text_renderer::TextRendererChanges;
 
 fn main() {
     let mut chunk = Chunk {
@@ -83,7 +93,8 @@ fn main() {
             .with_vsync(true),
         // .with_multisampling(16),
         &events_loop,
-    ).unwrap();
+    )
+    .unwrap();
 
     unsafe {
         gl_window.make_current().unwrap();
@@ -91,12 +102,22 @@ fn main() {
 
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
 
-    let mut assets = assets::Assets::new(
+    let assets = assets::Assets::new(
         env::var_os("BLOCKS_ASSET_DIR").map_or_else(|| PathBuf::from("assets"), PathBuf::from),
     );
 
-    let mut chunk_renderer = ChunkRenderer::new(&mut assets);
-    let text_renderer = TextRenderer::new(&mut assets);
+    let (file_watcher_tx, file_watcher_rx) = mpsc::channel();
+    let mut file_watcher = notify::watcher(file_watcher_tx, Duration::from_millis(100)).unwrap();
+    file_watcher
+        .watch(&assets.root, notify::RecursiveMode::Recursive)
+        .unwrap();
+
+    let mut chunk_renderer;
+    let text_renderer;
+    unsafe {
+        chunk_renderer = ChunkRenderer::new(&assets);
+        text_renderer = TextRenderer::new(&assets);
+    }
 
     let mut should_stop = false;
     let mut window_has_focus = false;
@@ -264,11 +285,8 @@ fn main() {
         name
     };
 
-    let post_renderer = PostRenderer::new(
-        &mut assets,
-        &color_texture_name,
-        &depth_stencil_texture_name,
-    );
+    let mut post_renderer =
+        PostRenderer::new(&assets, &color_texture_name, &depth_stencil_texture_name);
 
     while !should_stop {
         let now = time::Instant::now();
@@ -385,11 +403,15 @@ fn main() {
                         match event {
                             DeviceEvent::Added => println!("Added device {:?}", device_id),
                             DeviceEvent::Removed => println!("Removed device {:?}", device_id),
-                            DeviceEvent::Motion { axis, value } => match axis {
-                                0 => mouse_dx += value,
-                                1 => mouse_dy += value,
-                                3 => mouse_dscroll += value,
-                                _ => (),
+                            DeviceEvent::Motion { axis, value } => {
+                                if window_has_focus {
+                                    match axis {
+                                        0 => mouse_dx += value,
+                                        1 => mouse_dy += value,
+                                        3 => mouse_dscroll += value,
+                                        _ => (),
+                                    }
+                                }
                             },
                             _ => (),
                         }
@@ -539,6 +561,69 @@ fn main() {
             continue;
         }
 
+        {
+            let mut chunk_renderer_changes = ChunkRendererChanges::new();
+            let mut post_renderer_changes = PostRendererChanges::new();
+            let mut text_renderer_changes = TextRendererChanges::new();
+
+            loop {
+                match file_watcher_rx.try_recv() {
+                    Ok(event) => {
+                        use notify::DebouncedEvent;
+                        match event {
+                            DebouncedEvent::Create(path) | DebouncedEvent::Write(path) => {
+                                println!("File {:?} changed.", path);
+                                if &path == &assets.chunk_renderer_vert {
+                                    chunk_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.chunk_renderer_frag {
+                                    chunk_renderer_changes.frag = true;
+                                }
+                                if &path == &assets.text_renderer_vert {
+                                    text_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.text_renderer_frag {
+                                    text_renderer_changes.frag = true;
+                                }
+                                if &path == &assets.post_renderer_vert {
+                                    post_renderer_changes.vert = true;
+                                }
+                                if &path == &assets.post_renderer_frag {
+                                    post_renderer_changes.frag = true;
+                                }
+                                if &path == &assets.dirt_xyz_png {
+                                    chunk_renderer_changes.dirt = true;
+                                }
+                                if &path == &assets.stone_xyz_png {
+                                    chunk_renderer_changes.stone = true;
+                                }
+                                if &path == &assets.font_padded_sdf_png {
+                                    text_renderer_changes.font_padded_sdf_png = true;
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                    Err(err) => {
+                        use mpsc::TryRecvError;
+                        match err {
+                            TryRecvError::Empty => {
+                                break;
+                            }
+                            TryRecvError::Disconnected => {
+                                panic!("File watcher disconnected!");
+                            }
+                        }
+                    }
+                }
+            }
+
+            unsafe {
+                chunk_renderer.update(&assets, chunk_renderer_changes);
+                post_renderer.update(&assets, post_renderer_changes);
+            }
+        }
+
         unsafe {
             glw::bind_framebuffer(glw::FRAMEBUFFER, &framebuffer_name);
 
@@ -577,61 +662,63 @@ fn main() {
 
         let pos_from_wld_to_clp_space = pos_from_cam_to_clp_space * pos_from_wld_to_cam_space;
 
-        chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        unsafe {
+            chunk_renderer.render(&pos_from_wld_to_clp_space, &chunk);
+        }
 
         // Render ui
         unsafe {
             glw::bind_framebuffer(glw::FRAMEBUFFER, &glw::DEFAULT_FRAMEBUFFER_NAME);
             gl::Clear(gl::COLOR_BUFFER_BIT);
             gl::Disable(gl::DEPTH_TEST);
-        }
 
-        post_renderer.render(render_mode as i32, &frustrum, &viewport, mouse_pos);
+            post_renderer.render(render_mode as i32, &frustrum, &viewport, mouse_pos);
 
-        // obj
-        let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
-            left: 0.0,
-            right: viewport.width() as f32,
-            bottom: viewport.height() as f32,
-            top: 0.0,
-            near: -5.0,
-            far: 5.0,
-        });
+            // obj
+            let pos_from_wld_to_clp_space = Matrix4::from(cgmath::Ortho {
+                left: 0.0,
+                right: viewport.width() as f32,
+                bottom: viewport.height() as f32,
+                top: 0.0,
+                near: -5.0,
+                far: 5.0,
+            });
 
-        {
-            let s = format!(
-                "{} {}, {:.0} FPS, {:.0} UPS",
-                env!("CARGO_PKG_NAME"),
-                env!("GIT_HASH"),
-                fps,
-                ups
-            );
+            {
+                let s = format!(
+                    "{} {}, {:.0} FPS, {:.0} UPS",
+                    env!("CARGO_PKG_NAME"),
+                    env!("GIT_HASH"),
+                    fps,
+                    ups
+                );
 
-            text_renderer.render(
-                &pos_from_wld_to_clp_space,
-                &s,
-                font_size,
-                &text_renderer::Rect::from_dims(
+                text_renderer.render(
+                    &pos_from_wld_to_clp_space,
+                    &s,
                     font_size,
-                    font_size,
-                    viewport.width() as f32 - font_size,
-                    viewport.height() as f32 - font_size,
-                ),
-            );
-        }
+                    &text_renderer::Rect::from_dims(
+                        font_size,
+                        font_size,
+                        viewport.width() as f32 - font_size,
+                        viewport.height() as f32 - font_size,
+                    ),
+                );
+            }
 
-        if console_has_focus {
-            text_renderer.render(
-                &pos_from_wld_to_clp_space,
-                console.input(),
-                font_size,
-                &text_renderer::Rect::from_dims(
+            if console_has_focus {
+                text_renderer.render(
+                    &pos_from_wld_to_clp_space,
+                    console.input(),
                     font_size,
-                    font_size * 3.0,
-                    viewport.width() as f32 - font_size,
-                    viewport.height() as f32 - font_size,
-                ),
-            );
+                    &text_renderer::Rect::from_dims(
+                        font_size,
+                        font_size * 3.0,
+                        viewport.width() as f32 - font_size,
+                        viewport.height() as f32 - font_size,
+                    ),
+                );
+            }
         }
 
         gl_window.swap_buffers().unwrap();
@@ -647,15 +734,8 @@ fn main() {
         post_renderer.delete();
         text_renderer.delete();
 
-        {
-            let mut names = [ Some(color_texture_name), Some(depth_stencil_texture_name) ];
-            glw::delete_textures(&mut names);
-        }
-
-        {
-            let mut names = [ Some(framebuffer_name) ];
-            glw::delete_framebuffers(&mut names);
-        }
+        glw::delete_textures_move([color_texture_name, depth_stencil_texture_name].wrap_all());
+        glw::delete_framebuffers_move([framebuffer_name].wrap_all());
     }
 }
 

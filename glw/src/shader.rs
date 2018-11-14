@@ -1,218 +1,77 @@
+use super::shader_kind::*;
+
 impl_name!(ShaderName);
 
-// impl ShaderName {
-//     #[inline]
-//     fn new(kind: ShaderKind) -> Option<Self> {
-//         NonZeroU32::new(unsafe { gl::CreateShader(kind as u32) }).map(ShaderName)
-//     }
+pub trait StaticShaderName: Sized {
+    type ShaderKind: StaticShaderKind;
 
-//     #[inline]
-//     pub unsafe fn as_u32(&self) -> u32 {
-//         self.0.get()
-//     }
+    fn as_u32(&self) -> u32;
+    unsafe fn from_raw(name: u32) -> Option<Self>;
+}
 
-//     pub unsafe fn compile(
-//         self,
-//         sources: &[&str],
-//     ) -> Result<CompiledShaderName, (ShaderName, String)> {
-//         // NOTE: Const generics please.
-//         let source_lengths: Vec<i32> = sources.iter().map(|source| source.len() as i32).collect();
+macro_rules! impl_shader_kind {
+    ($K:path, $T:ident,) => {
+        #[derive(Debug)]
+        #[repr(transparent)]
+        pub struct $T(ShaderName);
 
-//         gl::ShaderSource(
-//             self.as_u32(),
-//             sources.len() as i32,
-//             sources.as_ptr() as *const *const i8,
-//             source_lengths.as_ptr(),
-//         );
+        impl $T {
+            #[inline]
+            pub fn as_u32(&self) -> u32 {
+                self.0.as_u32()
+            }
 
-//         gl::CompileShader(self.as_u32());
+            #[inline]
+            unsafe fn from_raw(name: u32) -> Option<Self> {
+                ShaderName::from_raw(name).map($T)
+            }
+        }
 
-//         let status = {
-//             let mut status = ::std::mem::uninitialized();
-//             gl::GetShaderiv(self.as_u32(), gl::COMPILE_STATUS, &mut status);
-//             status
-//         };
+        impl StaticShaderName for $T {
+            type ShaderKind = $K;
 
-//         if status == (gl::TRUE as i32) {
-//             Ok(CompiledShaderName(self))
-//         } else {
-//             let capacity = {
-//                 let mut capacity: i32 = ::std::mem::uninitialized();
-//                 gl::GetShaderiv(self.as_u32(), gl::INFO_LOG_LENGTH, &mut capacity);
-//                 assert!(capacity >= 0);
-//                 capacity
-//             };
+            #[inline]
+            fn as_u32(&self) -> u32 {
+                self.as_u32()
+            }
 
-//             let buffer = {
-//                 let mut buffer: Vec<u8> = Vec::with_capacity(capacity as usize);
-//                 let mut length: i32 = ::std::mem::uninitialized();
-//                 gl::GetShaderInfoLog(
-//                     self.as_u32(),
-//                     capacity,
-//                     &mut length,
-//                     buffer.as_mut_ptr() as *mut i8,
-//                 );
-//                 assert!(length >= 0 && length <= capacity);
-//                 buffer.set_len(length as usize);
-//                 buffer
-//             };
+            #[inline]
+            unsafe fn from_raw(name: u32) -> Option<Self> {
+                Self::from_raw(name)
+            }
+        }
 
-//             Err((
-//                 self,
-//                 String::from_utf8(buffer).expect("Shader info log is not utf8"),
-//             ))
-//         }
-//     }
-// }
+        // Temporarily discard the kind.
+        impl AsRef<ShaderName> for $T {
+            #[inline]
+            fn as_ref(&self) -> &ShaderName {
+                &self.0
+            }
+        }
+    };
+}
 
-// impl Drop for ShaderName {
-//     #[inline]
-//     fn drop(&mut self) {
-//         unsafe {
-//             gl::DeleteShader(self.as_u32());
-//         }
-//     }
-// }
-
-// #[derive(Debug)]
-// pub struct CompiledShaderName(ShaderName);
-
-// impl CompiledShaderName {
-//     #[inline]
-//     pub unsafe fn as_u32(&self) -> u32 {
-//         self.0.as_u32()
-//     }
-// }
-
-// // Temporarily discard the compiled state.
-// impl AsRef<ShaderName> for CompiledShaderName {
-//     #[inline]
-//     fn as_ref(&self) -> &ShaderName {
-//         &self.0
-//     }
-// }
-
-// // Permanently discard the compiled state for re-use.
-// impl From<CompiledShaderName> for ShaderName {
-//     #[inline]
-//     fn from(name: CompiledShaderName) -> Self {
-//         name.0
-//     }
-// }
-
-// macro_rules! impl_shader_kind {
-//     ($Kind:path, $KindShaderName:ident, $CompiledKindShaderName:ident) => {
-//         #[derive(Debug)]
-//         pub struct $KindShaderName(ShaderName);
-
-//         impl $KindShaderName {
-//             #[inline]
-//             pub fn new() -> Option<Self> {
-//                 ShaderName::new($Kind).map($KindShaderName)
-//             }
-
-//             #[inline]
-//             pub unsafe fn as_u32(&self) -> u32 {
-//                 self.0.as_u32()
-//             }
-
-//             #[inline]
-//             pub unsafe fn compile(
-//                 self,
-//                 sources: &[&str],
-//             ) -> Result<$CompiledKindShaderName, ($KindShaderName, String)> {
-//                 self.0
-//                     .compile(sources)
-//                     .map($CompiledKindShaderName)
-//                     .map_err(|(name, err)| ($KindShaderName(name), err))
-//             }
-//         }
-
-//         // Temporarily discard the kind.
-//         impl AsRef<ShaderName> for $KindShaderName {
-//             #[inline]
-//             fn as_ref(&self) -> &ShaderName {
-//                 &self.0
-//             }
-//         }
-
-//         // Permanently discard the kind.
-//         impl From<$KindShaderName> for ShaderName {
-//             #[inline]
-//             fn from(name: $KindShaderName) -> Self {
-//                 name.0
-//             }
-//         }
-
-//         pub struct $CompiledKindShaderName(CompiledShaderName);
-
-//         // Temporarily discard the kind.
-//         impl AsRef<CompiledShaderName> for $CompiledKindShaderName {
-//             #[inline]
-//             fn as_ref(&self) -> &CompiledShaderName {
-//                 &self.0
-//             }
-//         }
-
-//         // Permanently discard the kind.
-//         impl From<$CompiledKindShaderName> for CompiledShaderName {
-//             #[inline]
-//             fn from(name: $CompiledKindShaderName) -> Self {
-//                 name.0
-//             }
-//         }
-
-//         // Temporarily discard the compiled state.
-//         impl AsRef<$KindShaderName> for $CompiledKindShaderName {
-//             #[inline]
-//             fn as_ref(&self) -> &$KindShaderName {
-//                 // TODO: Figure out if this is our only option if we
-//                 // want to be able to discard both the kind and the
-//                 // compile state, since we need to store either
-//                 // $CompiledKindShaderName($KindShaderName) or
-//                 // $CompiledKindShaderName(CompiledShaderName).
-//                 // Perhaps it is better to not provide this at all.
-//                 unsafe { &*(self as *const $CompiledKindShaderName as *const $KindShaderName) }
-//             }
-//         }
-
-//         // Permanently discard the compiled state for re-use.
-//         impl From<$CompiledKindShaderName> for $KindShaderName {
-//             #[inline]
-//             fn from(name: $CompiledKindShaderName) -> Self {
-//                 $KindShaderName(From::from(name.0))
-//             }
-//         }
-//     };
-// }
-
-// impl_shader_kind!(
-//     ShaderKind::Compute,
-//     ComputeShaderName,
-//     CompiledComputeShaderName
-// );
-// impl_shader_kind!(
-//     ShaderKind::Fragment,
-//     FragmentShaderName,
-//     CompiledFragmentShaderName
-// );
-// impl_shader_kind!(
-//     ShaderKind::Geometry,
-//     GeometryShaderName,
-//     CompiledGeometryShaderName
-// );
-// impl_shader_kind!(
-//     ShaderKind::Vertex,
-//     VertexShaderName,
-//     CompiledVertexShaderName
-// );
-// impl_shader_kind!(
-//     ShaderKind::TesselationControl,
-//     TesselationControlShaderName,
-//     CompiledTesselationControlShaderName
-// );
-// impl_shader_kind!(
-//     ShaderKind::TesselationEvaluation,
-//     TesselationEvaluationShaderName,
-//     CompiledTesselationEvaluationShaderName
-// );
+impl_shader_kind!(
+    ComputeShader,
+    ComputeShaderName,
+);
+impl_shader_kind!(
+    FragmentShader,
+    FragmentShaderName,
+);
+impl_shader_kind!(
+    GeometryShader,
+    GeometryShaderName,
+);
+impl_shader_kind!(
+    VertexShader,
+    VertexShaderName,
+);
+impl_shader_kind!(
+    TessControlShader,
+    TessControlShaderName,
+);
+impl_shader_kind!(
+    TessEvaluationShader,
+    TessEvaluationShaderName,
+);
