@@ -450,6 +450,9 @@ impl ChunkRenderer {
 
     pub unsafe fn delete(self) {
         let ChunkRenderer {
+            vertex_shader,
+            fragment_shader,
+            program,
             texture_atlas_name,
             vertex_array_name,
             vertex_buffer_name,
@@ -457,21 +460,14 @@ impl ChunkRenderer {
             block_buffer_name,
             ..
         } = self;
-        {
-            let mut names = [Some(texture_atlas_name)];
-            glw::delete_textures(&mut names);
-        }
-        {
-            let mut names = [Some(vertex_array_name)];
-            glw::delete_vertex_arrays(&mut names);
-        }
-        {
-            let mut names = [
-                Some(vertex_buffer_name),
-                Some(element_buffer_name),
-                Some(block_buffer_name),
-            ];
-            glw::delete_buffers(&mut names);
-        }
+
+        fragment_shader.delete();
+        vertex_shader.delete();
+        program.delete();
+        glw::delete_textures_move([texture_atlas_name].wrap_all());
+        glw::delete_buffers_move(
+            [vertex_buffer_name, element_buffer_name, block_buffer_name].wrap_all(),
+        );
+        glw::delete_vertex_arrays_move([vertex_array_name].wrap_all());
     }
 }

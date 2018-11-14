@@ -44,6 +44,7 @@ use chunk_renderer::ChunkRenderer;
 use chunk_renderer::ChunkRendererChanges;
 use frustrum::Frustrum;
 use glutin::GlContext;
+use glw::prelude::*;
 use notify::Watcher;
 use post_renderer::PostRenderer;
 use post_renderer::PostRendererChanges;
@@ -733,15 +734,8 @@ fn main() {
         post_renderer.delete();
         text_renderer.delete();
 
-        {
-            let mut names = [Some(color_texture_name), Some(depth_stencil_texture_name)];
-            glw::delete_textures(&mut names);
-        }
-
-        {
-            let mut names = [Some(framebuffer_name)];
-            glw::delete_framebuffers(&mut names);
-        }
+        glw::delete_textures_move([color_texture_name, depth_stencil_texture_name].wrap_all());
+        glw::delete_framebuffers_move([framebuffer_name].wrap_all());
     }
 }
 
