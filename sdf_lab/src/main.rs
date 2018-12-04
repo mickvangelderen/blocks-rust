@@ -1,3 +1,5 @@
+use std::ops;
+
 #[derive(Clone, Copy, Debug)]
 struct Point {
     x: f32,
@@ -6,6 +8,14 @@ struct Point {
 
 fn p(x: f32, y: f32) -> Point {
     Point { x, y }
+}
+
+impl ops::Add for Point {
+    type Output = Point;
+
+    fn add(self, other: Point) -> Self::Output {
+        p(self.x + other.x, self.y + other.y)
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -63,6 +73,12 @@ fn closed_polygon_to_lines(points: &[Point]) -> Vec<Line> {
     lines
 }
 
+fn offset_lines(lines: &mut [Line], offset: Point) {
+    for line in lines.iter_mut() {
+        *line = l(line.p0 + offset, line.p1 + offset);
+    }
+}
+
 fn main() {
     // Square.
     // let edges = closed_polygon_to_lines(&[
@@ -73,7 +89,7 @@ fn main() {
     // ]);
 
     // Heart.
-    let edges = closed_polygon_to_lines(&[
+    let mut edges = closed_polygon_to_lines(&[
         p( 6.0,  0.0),
         p( 7.0,  0.0),
         p(13.0,  6.0),
@@ -87,8 +103,11 @@ fn main() {
         p( 0.0,  6.0),
     ]);
 
-    let w = 13;
-    let h = 14;
+    let b = 5;
+    offset_lines(&mut edges[..], p(b as f32, b as f32));
+
+    let w = 13 + b*2;
+    let h = 14 + b*2;
 
     let mut values: Vec<f32> = Vec::with_capacity(w*h);
 
@@ -107,10 +126,21 @@ fn main() {
         }
     }
 
+    fn unicode_shade(level: u32) -> &'static str {
+        match level {
+            0 => "\u{2588}",
+            1 => "\u{2593}",
+            2 => "\u{2592}",
+            3 => "\u{2591}",
+            _ => " ",
+        }
+    }
+
     for ir in 0..h {
         for ic in 0..w {
             let v = values[ir*w + ic];
-            print!("{}", if v >= 0.0 { "\u{2588}" } else { " " });
+            let level = v as u32;
+            print!("{}", unicode_shade(level));
             if ic == w - 1 {
                 println!();
             }
