@@ -50,6 +50,10 @@ fn sd_l_p(l: &Line, pq: &Point) -> f32 {
     let b = (yq - y0) * (x1 - x0) - (xq - x0) * (y1 - y0);
     let lmagsq = (x1 - x0).powi(2) + (y1 - y0).powi(2);
 
+    if (xq - 13.5).abs() < std::f32::EPSILON && (yq - 14.5).abs() < std::f32::EPSILON {
+        println!("pq = ({:>4.1}; {:>4.1}), l = ({:>4.1}; {:>4.1}) -> ({:>4.1}; {:>4.1}), a = {:>5.2}, b = {:>5.2}, d' = {:>5.2}", xq, yq, x0, y0, x1, y1, a/lmagsq, b/lmagsq, b/lmagsq.sqrt())
+    }
+
     if a > lmagsq {
         // Closest to p1.
         ((xq - x1).powi(2) + (yq - y1).powi(2)).sqrt() * b.signum()
@@ -132,12 +136,18 @@ fn main() {
     let mut values: Vec<f32> = Vec::with_capacity(w * h);
 
     for ir in 0..h {
-        let y = (h - 1 - ir) as f32 + 0.5f32;
+        let y = (h - 1 - ir) as f32 + 0.5;
         for ic in 0..w {
             let x = ic as f32 + 0.5;
+            if ir == 9 && ic == 13 {
+                println!("{:>4.1} {:>4.1}", x, y);
+            }
             let mut sd = std::f32::INFINITY;
             for l in &edges {
                 let new_sd = sd_l_p(l, &p(x, y));
+                if ir == 9 && ic == 13 {
+                    println!("{:>5.2}", new_sd);
+                }
                 if new_sd.abs() < sd.abs() {
                     sd = new_sd;
                 }
@@ -183,7 +193,16 @@ fn main() {
         }
     }
 
+
+    print!("   ");
+    for ic in 0..w {
+        print!("{:>6}   ", ic);
+    }
+    println!();
+
     for ir in 0..h {
+        print!("{:>2} ", ir);
+
         for ic in 0..w {
             let v = values[ir * w + ic];
             let level = clamp(((-v + 1.0)*2.5) as i32, 0, 4);
