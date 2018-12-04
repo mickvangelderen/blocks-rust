@@ -46,19 +46,19 @@ fn sd_l_p(l: &Line, pq: &Point) -> f32 {
     // if b > 0, pq lies on the left, if b < 0 pq lies on the right.
 
     // No need to actually divide a by lmagsq, and b not yet.
-    let a = (xq - x0)*(x1 - x0) + (yq - y0)*(y1 - y0);
-    let b = (yq - y0)*(x1 - x0) - (xq - x0)*(y1 - y0);
+    let a = (xq - x0) * (x1 - x0) + (yq - y0) * (y1 - y0);
+    let b = (yq - y0) * (x1 - x0) - (xq - x0) * (y1 - y0);
     let lmagsq = (x1 - x0).powi(2) + (y1 - y0).powi(2);
 
     if a > lmagsq {
         // Closest to p1.
-        ((xq - x1).powi(2) + (yq - y1).powi(2)).sqrt()*b.signum()
+        ((xq - x1).powi(2) + (yq - y1).powi(2)).sqrt() * b.signum()
     } else if a < 0.0 {
         // Closest to p0.
-        ((xq - x0).powi(2) + (yq - y0).powi(2)).sqrt()*b.signum()
+        ((xq - x0).powi(2) + (yq - y0).powi(2)).sqrt() * b.signum()
     } else {
         // On one of the sides between p0 and p1.
-        b/lmagsq.sqrt()
+        b / lmagsq.sqrt()
     }
 }
 
@@ -89,27 +89,47 @@ fn main() {
     // ]);
 
     // Heart.
-    let mut edges = closed_polygon_to_lines(&[
-        p( 6.0,  0.0),
-        p( 7.0,  0.0),
-        p(13.0,  6.0),
+    let heart_edges = closed_polygon_to_lines(&[
+        p(6.0, 0.0),
+        p(7.0, 0.0),
+        p(13.0, 6.0),
         p(13.0, 11.0),
         p(10.0, 14.0),
-        p( 8.0, 14.0),
-        p( 6.5, 12.5),
-        p( 5.0, 14.0),
-        p( 3.0, 14.0),
-        p( 0.0, 11.0),
-        p( 0.0,  6.0),
+        p(8.0, 14.0),
+        p(6.5, 12.5),
+        p(5.0, 14.0),
+        p(3.0, 14.0),
+        p(0.0, 11.0),
+        p(0.0, 6.0),
     ]);
+
+    // M.
+    let m_cut_out_edges = closed_polygon_to_lines(&[
+        p(3.0, 6.0),
+        p(3.0, 11.0),
+        p(4.5, 11.0),
+        p(6.5, 9.0),
+        p(8.5, 11.0),
+        p(10.0, 11.0),
+        p(10.0, 6.0),
+        p(9.0, 6.0),
+        p(9.0, 9.0),
+        p(6.5, 6.5),
+        p(4.0, 9.0),
+        p(4.0, 6.0),
+    ]);
+
+    let mut edges = Vec::new();
+    edges.extend(heart_edges);
+    edges.extend(m_cut_out_edges);
 
     let b = 5;
     offset_lines(&mut edges[..], p(b as f32, b as f32));
 
-    let w = 13 + b*2;
-    let h = 14 + b*2;
+    let w = 13 + b * 2;
+    let h = 14 + b * 2;
 
-    let mut values: Vec<f32> = Vec::with_capacity(w*h);
+    let mut values: Vec<f32> = Vec::with_capacity(w * h);
 
     for ir in 0..h {
         let y = (h - 1 - ir) as f32 + 0.5f32;
@@ -126,7 +146,7 @@ fn main() {
         }
     }
 
-    fn unicode_shade(level: u32) -> &'static str {
+    fn unicode_shade(level: i32) -> &'static str {
         match level {
             0 => "\u{2588}",
             1 => "\u{2593}",
@@ -136,10 +156,20 @@ fn main() {
         }
     }
 
+    fn clamp(val: i32, min: i32, max: i32) -> i32 {
+        if val < min {
+            min
+        } else if val > max {
+            max
+        } else {
+            val
+        }
+    }
+
     for ir in 0..h {
         for ic in 0..w {
-            let v = values[ir*w + ic];
-            let level = v as u32;
+            let v = values[ir * w + ic];
+            let level = clamp(((-v + 1.0)*2.5) as i32, 0, 4);
             print!("{}", unicode_shade(level));
             if ic == w - 1 {
                 println!();
@@ -150,6 +180,19 @@ fn main() {
             // } else {
             //     print!(" ");
             // }
+        }
+    }
+
+    for ir in 0..h {
+        for ic in 0..w {
+            let v = values[ir * w + ic];
+            let level = clamp(((-v + 1.0)*2.5) as i32, 0, 4);
+            print!("{:>6.2} {}", v, unicode_shade(level));
+            if ic == w - 1 {
+                println!("");
+            } else {
+                print!(" ");
+            }
         }
     }
 }
