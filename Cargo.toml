@@ -3,6 +3,7 @@ members = [
     "blocks",
     "glw",
     "sdf_tool",
+    "sdf_lab",
 ]
 
 [profile.dev]
